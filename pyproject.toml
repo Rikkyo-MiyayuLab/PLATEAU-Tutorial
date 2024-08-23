@@ -1,0 +1,35 @@
+[project]
+name = "plateau-tutorial"
+version = "0.1.0"
+description = "【立教/国交省/角川アスキー】PLATEAUチュートリアルプロジェクト"
+authors = [
+    { name = "tsyu12345", email = "syukut@gmail.com" }
+]
+dependencies = []
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dependencies = [
+    "mlagents>=0.28.0",
+    "torch==2.2.2",
+    "torchvision==0.17.2", 
+    "torchaudio==2.2.2"
+]
+dev-dependencies = []
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/plateau_tutorial"]
+
+[[tool.rye.sources]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu118"
+type = "index"
