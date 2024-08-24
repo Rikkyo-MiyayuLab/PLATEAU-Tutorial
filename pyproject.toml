@@ -5,7 +5,10 @@ description = "【立教/国交省/角川アスキー】PLATEAUチュートリ�
 authors = [
     { name = "tsyu12345", email = "syukut@gmail.com" }
 ]
-dependencies = []
+dependencies = [
+    "mlagents>=0.28.0",
+    "torch==2.2.2",
+]
 readme = "README.md"
 requires-python = ">= 3.8"
 

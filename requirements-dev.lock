@@ -8,3 +8,74 @@
 #   with-sources: false
 
 -e file:.
+absl-py==2.1.0
+    # via tensorboard
+attrs==24.2.0
+    # via cattrs
+    # via mlagents
+cattrs==1.5.0
+    # via mlagents
+cloudpickle==3.0.0
+    # via mlagents-envs
+filelock==3.15.4
+    # via torch
+fsspec==2024.6.1
+    # via torch
+grpcio==1.66.0
+    # via mlagents
+    # via mlagents-envs
+    # via tensorboard
+h5py==3.11.0
+    # via mlagents
+jinja2==3.1.4
+    # via torch
+markdown==3.7
+    # via tensorboard
+markupsafe==2.1.5
+    # via jinja2
+    # via werkzeug
+mlagents==0.28.0
+    # via plateau-tutorial
+mlagents-envs==0.28.0
+    # via mlagents
+mpmath==1.3.0
+    # via sympy
+networkx==3.3
+    # via torch
+numpy==1.26.4
+    # via h5py
+    # via mlagents
+    # via mlagents-envs
+    # via tensorboard
+packaging==24.1
+    # via tensorboard
+pillow==10.4.0
+    # via mlagents
+    # via mlagents-envs
+protobuf==5.27.3
+    # via mlagents
+    # via mlagents-envs
+    # via tensorboard
+pypiwin32==223
+    # via mlagents
+pywin32==306
+    # via pypiwin32
+pyyaml==6.0.2
+    # via mlagents
+    # via mlagents-envs
+six==1.16.0
+    # via tensorboard
+sympy==1.13.2
+    # via torch
+tensorboard==2.17.1
+    # via mlagents
+tensorboard-data-server==0.7.2
+    # via tensorboard
+torch==2.2.2+cu118
+    # via plateau-tutorial
+typing-extensions==4.12.2
+    # via torch
+werkzeug==3.0.4
+    # via tensorboard
+setuptools==73.0.1
+    # via tensorboard
