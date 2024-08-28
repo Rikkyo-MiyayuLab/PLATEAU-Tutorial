@@ -2,3 +2,5 @@
 * text=auto
 PLATEAUTutorial/Assets/Scenes/Tutorial-1.unity filter=lfs diff=lfs merge=lfs -text
 PLATEAUTutorial/Assets/Scenes/Tutorial-2.unity filter=lfs diff=lfs merge=lfs -text
+PLATEAUTutorial/Assets/Easy[[:space:]]Primitive[[:space:]]People/** filter=lfs diff=lfs merge=lfs -text
+PLATEAUTutorial/Assets/StreamingAssets/** filter=lfs diff=lfs merge=lfs -text
