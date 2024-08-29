@@ -46,4 +46,23 @@ public class Evacuee : MonoBehaviour {
         return sortedTowers;
     }
 
+    /// <summary>
+    /// 避難を行う
+    /// </summary>
+    public void Evacuation(GameObject targetTower) {
+        //Towerクラスを取得
+        Tower tower = targetTower.GetComponent<Tower>();
+        if(tower.currentCapacity > 0) {
+            tower.NowAccCount++;
+            //isEvacuate = true;
+            gameObject.SetActive(false);
+        } else { //キャパシティがいっぱいの場合、次のタワーを探す
+            excludeTowers.Add(tower.uuid);
+            List<GameObject> towers = SearchTowers(excludeTowers);
+            if(towers.Count > 0) {
+                Target = towers[0]; //最短距離のタワーを目標に設定
+            }
+        }
+    }
+
 }
