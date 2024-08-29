@@ -14,16 +14,19 @@ public class ShelterManagementAgent : Agent {
         
     }
     public override void Initialize() {
-        _env.OnInitializedEnv?.Invoke();
+        //_env.OnInitializedEnv?.Invoke();
     }
 
     public override void OnEpisodeBegin() {
         _env.OnEpisodeBegin();
+        Debug.Log("Episode begin");
     }
 
     public override void CollectObservations(VectorSensor sensor) {}
 
-    public override void OnActionReceived(ActionBuffers actions) {}
+    public override void OnActionReceived(ActionBuffers actions) {
+        
+    }
 
 
 }

@@ -18,6 +18,11 @@ public class Evacuee : MonoBehaviour {
     }
 
     void FixedUpdate() {
+        //移動中でない場合、次の目的地を設定する
+        if (!NavAgent.pathPending && NavAgent.remainingDistance < 0.1f) {
+            var nextTarget = SearchTowers(excludeTowers)[0];
+            Target = nextTarget;
+        }
         NavAgent.SetDestination(Target.transform.position);
     }
 

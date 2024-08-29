@@ -14,7 +14,6 @@ public class EnvManager : MonoBehaviour {
 
     [Header("Environment Settings")]
     public int MaxSteps;
-    public int nowStep;
     public int SpawnEvacueeSize;
     public GameObject SpawnEvacueePref; // 避難者のプレハブ
     public float SpawnRadius = 10f; // スポーンエリアの半径
@@ -40,17 +39,17 @@ public class EnvManager : MonoBehaviour {
     [Header("Parameters")]
     public float EvacuationRate; // 全体の避難率
 
-    protected int m_Timer;
+    protected int currentStep;
 
     private Color gizmoColor = Color.red; // Gizmoの色
 
     void Start() {
-        nowStep = 0;
-        m_Timer = 0;
         Agent = AgentObj.GetComponent<ShelterManagementAgent>();
+        currentStep = Agent.StepCount;
+        MaxSteps = Agent.MaxStep;
         OnEndEpisode += (float _) => {
+            Dispose();
             Agent.EndEpisode();
-            Reset();
         };
     }
 
@@ -60,9 +59,9 @@ public class EnvManager : MonoBehaviour {
     }
 
     void FixedUpdate() {
-        m_Timer += 1;
+        currentStep += Agent.StepCount;
         UpdateUI();
-        if ((m_Timer >= MaxSteps && MaxSteps > 0)) {
+        if ((currentStep >= MaxSteps && MaxSteps > 0)) {
             OnEndEpisode?.Invoke(EvacuationRate);
         }
 
@@ -72,29 +71,33 @@ public class EnvManager : MonoBehaviour {
     /// エピソード開始時の処理
     /// </summary>
     public void OnEpisodeBegin() {
-
-        Evacuees = new List<GameObject>(GameObject.FindGameObjectsWithTag("Evacuee"));
-        Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
-
-        for (int i = 0; i < SpawnEvacueeSize; i++) {
-            Vector3 spawnPos = GetRandomPositionOnNavMesh();
-            if (spawnPos != Vector3.zero) {
-                GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity);
-                evacuee.tag = "Evacuee";
-                Evacuees.Add(evacuee);
-            }
-        }
+        Create();
         OnStartEpisode?.Invoke();
     }
 
-    public void Reset() {
+    public void Dispose() {
         // 避難者の削除
         foreach (var evacuee in Evacuees) {
             Destroy(evacuee);
         }
         Evacuees.Clear();
         Shelters.Clear();
-        m_Timer = 0;
+        currentStep = 0;
+    }
+
+    public void Create() {
+        Evacuees = new List<GameObject>(GameObject.FindGameObjectsWithTag("Evacuee"));
+        Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
+
+        for (int i = 0; i < SpawnEvacueeSize; i++) {
+            Vector3 spawnPos = GetRandomPositionOnNavMesh();
+            spawnPos.y = 1.2f;
+            if (spawnPos != Vector3.zero) {
+                GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity);
+                evacuee.tag = "Evacuee";
+                Evacuees.Add(evacuee);
+            }
+        }
     }
 
 
@@ -113,7 +116,7 @@ public class EnvManager : MonoBehaviour {
     }
 
     private void UpdateUI() {
-        stepCounter.text = $"Remain Steps : {MaxSteps - m_Timer}";
+        stepCounter.text = $"Remain Steps : {MaxSteps - currentStep}";
     }
 
 }
