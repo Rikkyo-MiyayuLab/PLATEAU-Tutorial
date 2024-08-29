@@ -17,8 +17,8 @@ public class Evacuee : MonoBehaviour {
         NavAgent = GetComponent<NavMeshAgent>();    
     }
 
-    void void FixedUpdate() {
-        NavAgent.setDestination(Target.transform.position);
+    void FixedUpdate() {
+        NavAgent.SetDestination(Target.transform.position);
     }
 
 
