@@ -1135,7 +1135,6 @@ GameObject:
   - component: {fileID: 640587647}
   - component: {fileID: 640587650}
   - component: {fileID: 640587649}
-  - component: {fileID: 640587648}
   m_Layer: 0
   m_Name: SelectAgent
   m_TagString: Untagged
@@ -1158,21 +1157,6 @@ Transform:
   m_Father: {fileID: 343389821}
   m_RootOrder: -1
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &640587648
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 640587646}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 3a5c9d521e5ef4759a8246a07d52221e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  DecisionPeriod: 10
-  DecisionStep: 0
-  TakeActionsBetweenDecisions: 1
 --- !u!114 &640587649
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1189,6 +1173,9 @@ MonoBehaviour:
     maxStep: 0
   hasUpgradedFromAgentParameters: 1
   MaxStep: 100000
+  ShelterCandidates: []
+  SelectedMaterial: {fileID: 0}
+  NonSelectMaterial: {fileID: 0}
 --- !u!114 &640587650
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1206,8 +1193,8 @@ MonoBehaviour:
     NumStackedVectorObservations: 1
     m_ActionSpec:
       m_NumContinuousActions: 0
-      BranchSizes: 01000000
-    VectorActionSize: 01000000
+      BranchSizes: 010000000100000001000000010000000100000001000000
+    VectorActionSize: 010000000100000001000000010000000100000001000000
     VectorActionDescriptions: []
     VectorActionSpaceType: 0
     hasUpgradedBrainParametersWithActionSpec: 1

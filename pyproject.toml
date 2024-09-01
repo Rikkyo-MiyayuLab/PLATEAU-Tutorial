@@ -8,6 +8,9 @@ authors = [
 dependencies = [
     "mlagents>=0.28.0",
     "torch==2.2.2",
+    "torchvision==0.17.2", 
+    "torchaudio==2.2.2",
+    "protobuf==3.20.3",
 ]
 readme = "README.md"
 requires-python = ">= 3.8"
@@ -18,12 +21,6 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dependencies = [
-    "mlagents>=0.28.0",
-    "torch==2.2.2",
-    "torchvision==0.17.2", 
-    "torchaudio==2.2.2"
-]
 dev-dependencies = []
 
 [tool.hatch.metadata]
