@@ -27,7 +27,7 @@ public class Tower : MonoBehaviour{
         ExMark = transform.Find("ExMark").GetComponent<MeshRenderer>();
         ExMark.enabled = false;
         _env = GetComponentInParent<EnvManager>();
-        _env.OnEndEpisode += (float _) => {
+        _env.OnEndEpisode += (float _, int __) => {
             NowAccCount = 0;
             ExMark.enabled = false;
         };
@@ -42,6 +42,7 @@ public class Tower : MonoBehaviour{
     }
 
     void OnTriggerEnter(Collider other) {
+        Debug.Log("OnTriggerEnter Tower");
         if (other.CompareTag("Evacuee")) {
             Evacuee evacuee = other.GetComponent<Evacuee>();
             evacuee.Evacuation(this.gameObject);

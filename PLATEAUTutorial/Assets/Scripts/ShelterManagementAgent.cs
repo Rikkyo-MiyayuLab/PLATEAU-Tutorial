@@ -38,8 +38,17 @@ public class ShelterManagementAgent : Agent {
             sensor.AddObservation(shelter.transform.position);
             sensor.AddObservation(shelter.GetComponent<Tower>().currentCapacity);
         }
-        foreach(GameObject evacuee in _env.Evacuees) {
-            sensor.AddObservation(evacuee.transform.position);
+        // 観測のタイミングで避難者が避難してGameObjectが消えることがあるので、ここでコピーを作成
+        List<GameObject> evacuees = new List<GameObject>(_env.Evacuees);
+        //sensor.AddObservation(evacuees.Count);
+
+        // 避��者の位置情報を追加
+        foreach(GameObject evacuee in evacuees) {
+            if(evacuee != null) {
+                sensor.AddObservation(evacuee.transform.position);
+            } else {
+                sensor.AddObservation(Vector3.zero);
+            }
         }
         
 
@@ -47,8 +56,14 @@ public class ShelterManagementAgent : Agent {
 
     public override void OnActionReceived(ActionBuffers actions) {
         var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序
-        foreach(int select in Selects) {
-            GameObject Shelter = ShelterCandidates[select];
+        if(Selects.Length != ShelterCandidates.Length) {
+            Debug.LogError("Invalid action size : 避難所候補地のサイズとエージェントの選択サイズが不一致です");
+            return;
+        }
+
+        for(int i = 0; i < Selects.Length; i++) {
+            int select = Selects[i]; // 0:非選択、1:選択
+            GameObject Shelter = ShelterCandidates[i];
             if(select == 1) {
                 _env.Shelters.Add(Shelter);
                 Shelter.tag = "Shelter";

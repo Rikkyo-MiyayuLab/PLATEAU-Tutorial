@@ -12,16 +12,18 @@ public class Evacuee : MonoBehaviour {
     public GameObject Target;
     private NavMeshAgent NavAgent;
     private List<string> excludeTowers; //1度避難したタワーのUUIDを格納するリスト
-
     void Start() {
         NavAgent = GetComponent<NavMeshAgent>();    
+        excludeTowers = new List<string>(); //初期化
     }
 
     void FixedUpdate() {
         //移動中でない場合、次の目的地を設定する
         if (!NavAgent.pathPending && NavAgent.remainingDistance < 0.1f) {
-            var nextTarget = SearchTowers(excludeTowers)[0];
-            Target = nextTarget;
+            var nextTargetCandidates = SearchTowers(excludeTowers);
+            if(nextTargetCandidates.Count > 0) {
+                Target = nextTargetCandidates[0]; //最短距��のタワーを目標に設定
+            }
         }
         NavAgent.SetDestination(Target.transform.position);
     }

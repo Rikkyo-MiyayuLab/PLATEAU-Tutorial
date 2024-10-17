@@ -30,7 +30,7 @@ public class EnvManager : MonoBehaviour {
     public TextMeshProUGUI stepCounter;
 
     // Event Listeners
-    public delegate void EndEpisodeHandler(float evacueeRate);
+    public delegate void EndEpisodeHandler(float evacueeRate, int endStep);
     public EndEpisodeHandler OnEndEpisode;
     public delegate void StartEpisodeHandler();
     public StartEpisodeHandler OnStartEpisode;
@@ -38,6 +38,7 @@ public class EnvManager : MonoBehaviour {
     public OnInitHandler OnInitializedEnv;
     [Header("Parameters")]
     public float EvacuationRate; // 全体の避難率
+    public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
 
     protected int currentStep;
 
@@ -47,8 +48,15 @@ public class EnvManager : MonoBehaviour {
         Agent = AgentObj.GetComponent<ShelterManagementAgent>();
         currentStep = Agent.StepCount;
         MaxSteps = Agent.MaxStep;
-        OnEndEpisode += (float _) => {
-            Dispose();
+        OnEndEpisode += (float evacuateRate, int endStep) => {
+            //Dispose();
+            //エージェントに避難率と終了までにかかったステップ数に基づいて報酬を与える
+            Agent.SetReward(evacuateRate);
+            // かかったステップ数が少ないほど報酬が高い
+            if(endStep > MaxSteps) { //超える場合があるので、ここで補正
+                endStep = MaxSteps;
+            }
+            Agent.AddReward(1.0f - (float)endStep / MaxSteps);
             Agent.EndEpisode();
         };
     }
@@ -60,9 +68,10 @@ public class EnvManager : MonoBehaviour {
 
     void FixedUpdate() {
         currentStep += Agent.StepCount;
+        EvacuationRate = GetCurrentEvacueeRate();
         UpdateUI();
         if ((currentStep >= MaxSteps && MaxSteps > 0)) {
-            OnEndEpisode?.Invoke(EvacuationRate);
+            OnEndEpisode?.Invoke(EvacuationRate, currentStep);
         }
 
     }
@@ -71,8 +80,10 @@ public class EnvManager : MonoBehaviour {
     /// エピソード開始時の処理
     /// </summary>
     public void OnEpisodeBegin() {
+        EnableEnv = false;
         Create();
         OnStartEpisode?.Invoke();
+        EnableEnv = true;
     }
 
     public void Dispose() {
@@ -83,10 +94,15 @@ public class EnvManager : MonoBehaviour {
         Evacuees.Clear();
         Shelters.Clear();
         currentStep = 0;
+
+        Evacuees = new List<GameObject>();
+        Shelters = new List<GameObject>();
     }
 
     public void Create() {
-        Evacuees = new List<GameObject>(GameObject.FindGameObjectsWithTag("Evacuee"));
+
+        Dispose();
+
         Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
 
         for (int i = 0; i < SpawnEvacueeSize; i++) {
@@ -98,6 +114,8 @@ public class EnvManager : MonoBehaviour {
                 Evacuees.Add(evacuee);
             }
         }
+
+        Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
     }
 
 
@@ -117,6 +135,14 @@ public class EnvManager : MonoBehaviour {
 
     private void UpdateUI() {
         stepCounter.text = $"Remain Steps : {MaxSteps - currentStep}";
+    }
+
+
+    private float GetCurrentEvacueeRate() {
+        int evacueeSize = Evacuees.Count;
+        // 避難済みの避難者はgameObjectがfalseになっているので、それで判定
+        int evacuatedSize = Evacuees.RemoveAll(e =>!e.activeSelf);
+        return (float)evacuatedSize / evacueeSize;
     }
 
 }
