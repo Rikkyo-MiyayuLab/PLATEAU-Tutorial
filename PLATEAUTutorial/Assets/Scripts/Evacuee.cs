@@ -25,7 +25,10 @@ public class Evacuee : MonoBehaviour {
                 Target = nextTargetCandidates[0]; //最短距��のタワーを目標に設定
             }
         }
-        NavAgent.SetDestination(Target.transform.position);
+        if(Target != null) {
+            NavAgent.SetDestination(Target.transform.position);
+        }
+        
     }
 
 

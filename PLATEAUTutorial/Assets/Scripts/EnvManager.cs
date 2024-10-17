@@ -16,6 +16,7 @@ public class EnvManager : MonoBehaviour {
     public int MaxSteps;
     public int SpawnEvacueeSize;
     public GameObject SpawnEvacueePref; // 避難者のプレハブ
+    public GameObject ExMarkPref;
     public float SpawnRadius = 10f; // スポーンエリアの半径
     public Vector3 spawnCenter = Vector3.zero; // スポーンエリアの中心位置
 
@@ -103,8 +104,6 @@ public class EnvManager : MonoBehaviour {
 
         Dispose();
 
-        Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
-
         for (int i = 0; i < SpawnEvacueeSize; i++) {
             Vector3 spawnPos = GetRandomPositionOnNavMesh();
             spawnPos.y = 1.2f;
@@ -116,6 +115,24 @@ public class EnvManager : MonoBehaviour {
         }
 
         Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
+        foreach (var shelter in Shelters) {
+            if(shelter.GetComponent<Tower>() == null) {
+                Tower tower = shelter.AddComponent<Tower>();
+                tower.uuid = System.Guid.NewGuid().ToString();
+                tower.MaxCapacity = 10;
+                tower.NowAccCount = 0;
+            }
+            // ExMarkの追加（存在しない場合のみ）
+            if(shelter.transform.Find("ExMark") == null) {
+                // GameObjectをshlterを親にして生成
+                /* NOTE : エピソード終了毎に無限生成されてしまう
+                GameObject exMark = Instantiate(ExMarkPref, shelter.transform);
+                exMark.transform.localPosition = Vector3.zero;
+                exMark.transform.parent = shelter.transform;
+                exMark.GetComponent<MeshRenderer>().enabled = false; // 非表示にする
+                */
+            }
+        }
     }
 
 

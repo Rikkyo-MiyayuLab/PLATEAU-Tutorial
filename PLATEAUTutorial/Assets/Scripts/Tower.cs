@@ -7,8 +7,8 @@ using UnityEngine;
 /// 現在の収容人数や、受け入れ可否等のデータを用意
 /// </summary>
 public class Tower : MonoBehaviour{
-    public int MaxCapacity; //最大収容人数
-    public int NowAccCount; //現在の収容人数
+    public int MaxCapacity = 10; //最大収容人数
+    public int NowAccCount = 0; //現在の収容人数
     public int currentCapacity; //現在の受け入れ可能人数：最大収容人数 - 現在の収容人数
 
     public string uuid; //タワーの識別子
@@ -24,12 +24,12 @@ public class Tower : MonoBehaviour{
     private EnvManager _env;
 
     void Start() {
-        ExMark = transform.Find("ExMark").GetComponent<MeshRenderer>();
-        ExMark.enabled = false;
+        //ExMark = transform.Find("ExMark(Clone)").GetComponent<MeshRenderer>();
+        //ExMark.enabled = false;
         _env = GetComponentInParent<EnvManager>();
         _env.OnEndEpisode += (float _, int __) => {
             NowAccCount = 0;
-            ExMark.enabled = false;
+            //ExMark.enabled = false;
         };
     }
 
@@ -37,7 +37,7 @@ public class Tower : MonoBehaviour{
         currentCapacity = MaxCapacity - NowAccCount;
         if (currentCapacity <= 0) {
             onRejected?.Invoke(NowAccCount);
-            ExMark.enabled = true;
+            //ExMark.enabled = true;
         }
     }
 

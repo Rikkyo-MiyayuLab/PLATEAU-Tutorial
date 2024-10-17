@@ -17,6 +17,11 @@ public class ShelterManagementAgent : Agent {
     }
     public override void Initialize() {
         //_env.OnInitializedEnv?.Invoke();
+        if(ShelterCandidates.Length == 0) {
+            Debug.LogError("No shelter candidates");
+            // NOTE: 予め候補地は事前に設定させておくこと
+            ShelterCandidates = GameObject.FindGameObjectsWithTag("Shelter");
+        }
     }
 
     public override void OnEpisodeBegin() {
