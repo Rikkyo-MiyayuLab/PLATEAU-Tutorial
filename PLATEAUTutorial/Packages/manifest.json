@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "com.synesthesias.plateau-unity-sdk": "https://github.com/Project-PLATEAU/PLATEAU-SDK-for-Unity.git#v2.3.2",
+    "com.unity.ai.navigation": "1.1.5",
     "com.unity.collab-proxy": "2.4.4",
     "com.unity.feature.development": "1.0.1",
     "com.unity.ml-agents": "file:../../ml-agents/com.unity.ml-agents",

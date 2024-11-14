@@ -1,16 +1,17 @@
 [project]
 name = "plateau-tutorial"
 version = "0.1.0"
-description = "【立教/国交省/角川アスキー】PLATEAUチュートリアルプロジェクト"
+description = "Add your description here"
 authors = [
     { name = "tsyu12345", email = "syukut@gmail.com" }
 ]
 dependencies = [
-    "mlagents>=0.28.0",
-    "torch==2.2.2",
+    "mlagents>=1.0.0",
+    "torch==2.4.1+cu118",
+    "torchvision==0.19.1+cu118",
 ]
 readme = "README.md"
-requires-python = ">= 3.8"
+requires-python = ">= 3.10"
 
 [build-system]
 requires = ["hatchling"]
@@ -18,12 +19,6 @@ build-backend = "hatchling.build"
 
 [tool.rye]
 managed = true
-dependencies = [
-    "mlagents>=0.28.0",
-    "torch==2.2.2",
-    "torchvision==0.17.2", 
-    "torchaudio==2.2.2"
-]
 dev-dependencies = []
 
 [tool.hatch.metadata]

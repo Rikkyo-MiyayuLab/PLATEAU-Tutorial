@@ -9,73 +9,46 @@
 
 -e file:.
 absl-py==2.1.0
-    # via tensorboard
 attrs==24.2.0
-    # via cattrs
-    # via mlagents
 cattrs==1.5.0
-    # via mlagents
+certifi==2024.8.30
+charset-normalizer==3.3.2
 cloudpickle==3.0.0
-    # via mlagents-envs
-filelock==3.15.4
-    # via torch
-fsspec==2024.6.1
-    # via torch
-grpcio==1.66.0
-    # via mlagents
-    # via mlagents-envs
-    # via tensorboard
-h5py==3.11.0
-    # via mlagents
+colorama==0.4.6
+filelock==3.16.1
+fsspec==2024.9.0
+grpcio==1.48.2
+gym==0.26.2
+gym-notices==0.0.8
+h5py==3.12.1
+huggingface-hub==0.25.1
+idna==3.10
 jinja2==3.1.4
-    # via torch
 markdown==3.7
-    # via tensorboard
 markupsafe==2.1.5
-    # via jinja2
-    # via werkzeug
-mlagents==0.28.0
-    # via plateau-tutorial
-mlagents-envs==0.28.0
-    # via mlagents
+mlagents==1.0.0
+mlagents-envs==1.0.0
 mpmath==1.3.0
-    # via sympy
 networkx==3.3
-    # via torch
-numpy==1.26.4
-    # via h5py
-    # via mlagents
-    # via mlagents-envs
-    # via tensorboard
+numpy==1.21.2
+onnx==1.12.0
 packaging==24.1
-    # via tensorboard
+pettingzoo==1.15.0
 pillow==10.4.0
-    # via mlagents
-    # via mlagents-envs
-protobuf==5.27.3
-    # via mlagents
-    # via mlagents-envs
-    # via tensorboard
+protobuf==3.19.6
 pypiwin32==223
-    # via mlagents
 pywin32==306
-    # via pypiwin32
 pyyaml==6.0.2
-    # via mlagents
-    # via mlagents-envs
+requests==2.32.3
 six==1.16.0
-    # via tensorboard
-sympy==1.13.2
-    # via torch
-tensorboard==2.17.1
-    # via mlagents
+sympy==1.13.3
+tensorboard==2.18.0
 tensorboard-data-server==0.7.2
-    # via tensorboard
-torch==2.2.2+cu118
-    # via plateau-tutorial
+torch==2.4.1+cu118
+torchvision==0.19.1+cu118
+tqdm==4.66.5
 typing-extensions==4.12.2
-    # via torch
+urllib3==2.2.3
 werkzeug==3.0.4
-    # via tensorboard
-setuptools==73.0.1
-    # via tensorboard
+# The following packages are considered to be unsafe in a requirements file:
+setuptools==75.1.0
