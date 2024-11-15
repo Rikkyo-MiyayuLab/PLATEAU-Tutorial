@@ -10,6 +10,7 @@ using Unity.MLAgents.Sensors;
 public class BusAgent : Agent {
 
     public NavMeshAgent navMeshAgent;
+    public int MaxAccommodationCount = 50;
     public float MinimumSpeed = 0.5f;
     public GameObject target; //バス停
     public int passengerCount = 0;
@@ -23,7 +24,12 @@ public class BusAgent : Agent {
     }
 
     void Update() {
+
         if(navMeshAgent.remainingDistance < 1.0f) {
+            // バス停に到着した場合
+            if (target != null) {
+                GetRidePassengers(target.GetComponent<BusStop>());;
+            }
             RequestDecision();
         }
 
@@ -43,6 +49,9 @@ public class BusAgent : Agent {
     public override void Initialize() {}
 
     public override void OnEpisodeBegin() {
+        // 各種パラメータの初期化
+        passengerCount = 0;
+        
         // 初回の目的地を要求
         int randomIndex = Random.Range(0, _env.BusStops.Count);
         target = _env.BusStops[randomIndex];
@@ -79,8 +88,18 @@ public class BusAgent : Agent {
         navMeshAgent.SetDestination(target.transform.position);
 
         // 進行方向正面に向ける
+    }
 
-        
+
+    private void GetRidePassengers(BusStop busStop) {
+        passengerCount += busStop.WaitingPassengers.Count;
+        busStop.PassengerCountText.text = passengerCount.ToString();
+        busStop.PassengerCountText.text = "0";
+        // 待機中の乗客を破棄
+        foreach (var passenger in busStop.WaitingPassengers) {
+            Destroy(passenger);
+        }
+        busStop.WaitingPassengers.Clear();
     }
 
 
