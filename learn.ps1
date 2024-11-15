@@ -1,11 +1,12 @@
 param(
     [int]$envs= 4,
+    [int]$mode=1,
     [string]$modelId="0",
     [bool]$force = $false,
     [bool]$exe = $false
 )
 
-$configurePath = "PLATEAUTutorial/Assets/Config/Tutorial-1.yaml"
+$configurePath = "PLATEAUTutorial/Assets/Config/Tutorial-$mode.yaml"
 $exePath = ""
 
 if($exe) {
