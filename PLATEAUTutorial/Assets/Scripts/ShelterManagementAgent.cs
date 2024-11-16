@@ -75,7 +75,7 @@ public class ShelterManagementAgent : Agent {
                 Shelter.GetComponent<MeshRenderer>().material = SelectedMaterial;
             } else if(select == 0) {
                 _env.Shelters.Remove(Shelter);
-                Shelter.tag = "Untagged";
+                //Shelter.tag = "Untagged";
                 Shelter.GetComponent<MeshRenderer>().material = NonSelectMaterial;
             } else {
                 Debug.LogError("Invalid action");

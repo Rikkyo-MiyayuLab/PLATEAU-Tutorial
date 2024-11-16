@@ -15,20 +15,12 @@ public class Evacuee : MonoBehaviour {
     void Start() {
         NavAgent = GetComponent<NavMeshAgent>();    
         excludeTowers = new List<string>(); //初期化
-    }
-
-    void FixedUpdate() {
-        //移動中でない場合、次の目的地を設定する
-        if (!NavAgent.pathPending && NavAgent.remainingDistance < 0.1f) {
-            var nextTargetCandidates = SearchTowers(excludeTowers);
-            if(nextTargetCandidates.Count > 0) {
-                Target = nextTargetCandidates[0]; //最短距��のタワーを目標に設定
-            }
-        }
-        if(Target != null) {
+        // 最短距離の避難所を探す
+        List<GameObject> towers = SearchTowers();
+        if(towers.Count > 0) {
+            Target = towers[0]; //最短距離のタワーを目標に設定
             NavAgent.SetDestination(Target.transform.position);
         }
-        
     }
 
 
@@ -39,16 +31,17 @@ public class Evacuee : MonoBehaviour {
     /// <returns>localField内のTowerオブジェクトのリスト</returns>
     private List<GameObject> SearchTowers(List<string> excludeTowerUUIDs = null) {
         GameObject[] towers = GameObject.FindGameObjectsWithTag("Shelter");
-        List<GameObject> sortedTowers = new List<GameObject>();
+        List<GameObject> sortedTowerPoints = new List<GameObject>();
         foreach (var tower in towers) {
             if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Tower>().uuid)) {
                 continue;
             }
-            sortedTowers.Add(tower);
+            GameObject point = tower.transform.GetChild(0).gameObject;
+            sortedTowerPoints.Add(point);
         }
 
-        sortedTowers.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(Vector3.Distance(b.transform.position, transform.position)));
-        return sortedTowers;
+        sortedTowerPoints.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(Vector3.Distance(b.transform.position, transform.position)));
+        return sortedTowerPoints;
     }
 
     /// <summary>
