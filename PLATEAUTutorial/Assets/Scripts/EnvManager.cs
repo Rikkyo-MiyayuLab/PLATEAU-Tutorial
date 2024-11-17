@@ -108,7 +108,7 @@ public class EnvManager : MonoBehaviour {
             Vector3 spawnPos = GetRandomPositionOnNavMesh();
             spawnPos.y = 1.2f;
             if (spawnPos != Vector3.zero) {
-                GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity);
+                GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity, transform);
                 evacuee.tag = "Evacuee";
                 Evacuees.Add(evacuee);
             }

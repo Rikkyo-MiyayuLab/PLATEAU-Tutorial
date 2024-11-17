@@ -6,6 +6,8 @@ TagManager:
   tags:
   - Evacuee
   - Shelter
+  - BusStop
+  - Agent
   layers:
   - Default
   - TransparentFX
