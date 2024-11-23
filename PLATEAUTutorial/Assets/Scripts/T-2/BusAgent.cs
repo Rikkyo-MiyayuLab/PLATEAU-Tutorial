@@ -103,20 +103,11 @@ public class BusAgent : Agent {
 
     private void GetRidePassengers(BusStop busStop) {
         // TODO: 待機中の乗客でエージェントと目的地が一致するものを乗車させる
-        // 停留所にいる乗客一覧を取得
-        List<GameObject> passengers = new List<GameObject>(busStop.WaitingPassengers);
-        foreach(GameObject passenger in passengers) {
-            Passenger passengerComp = passenger.GetComponent<Passenger>();
-            // 乗客の目的地が自身の目的地と一致する場合
-            if(passengerComp.Destination == target && passengers.Count < MaxAccommodationCount) {
-                // 乗客を乗車させる（コピーを取得し、バス停にいる乗客はDestory）
-                passengers.Add(passenger);
-                passengerComp.isWaiting = false;
-                // バス停にいる乗客リストから削除
-                busStop.WaitingPassengers.Remove(passenger);
-                passenger.SetActive(false);
-            }
-        }        
+        List<GameObject> ridePassengers = busStop.GetPassenger(target);
+        foreach (var passenger in ridePassengers) {
+            if(passengers.Count <= MaxAccommodationCount){continue
+            passengers.Add(passenger);
+        }
     }
 
 
