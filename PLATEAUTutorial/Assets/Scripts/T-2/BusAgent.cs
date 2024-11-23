@@ -13,7 +13,7 @@ public class BusAgent : Agent {
     public int MaxAccommodationCount = 50;
     public float MinimumSpeed = 0.5f;
     public GameObject target; //バス停
-    public int passengerCount = 0;
+    public List<GameObject> passengers = new List<GameObject>();
     private BusEnvManager _env;
 
     private bool isArrived = false;
@@ -50,9 +50,9 @@ public class BusAgent : Agent {
 
     public override void OnEpisodeBegin() {
         // 各種パラメータの初期化
-        passengerCount = 0;
+        passengers.Clear();
         
-        // 初回の目的地を要求
+        // 初回の目的地を要求: NOTE: 
         int randomIndex = Random.Range(0, _env.BusStops.Count);
         target = _env.BusStops[randomIndex];
         RequestDecision();
@@ -63,8 +63,8 @@ public class BusAgent : Agent {
         // 自身の位置・速度情報
         sensor.AddObservation(transform.position);
         sensor.AddObservation(navMeshAgent.velocity);
-        sensor.AddObservation(passengerCount);
-        //目的地の位置情報
+        //sensor.AddObservatList<ion>(passengers);
+        // 目的地の位置情報
         sensor.AddObservation(target.transform.position);
     }
 
@@ -90,16 +90,33 @@ public class BusAgent : Agent {
         // 進行方向正面に向ける
     }
 
+    private void GetOffPassengers() {
+        // 目的地に到着した場合、乗客を降ろす
+        foreach (var passenger in passengers) {
+            // 乗客の目的地が自身の目的地と一致する場合
+            if (passenger.GetComponent<Passenger>().Destination == target) {
+                // 乗客を降ろす
+                passengers.Remove(passenger);
+            }
+        }
+    }
 
     private void GetRidePassengers(BusStop busStop) {
-        passengerCount += busStop.WaitingPassengers.Count;
-        busStop.PassengerCountText.text = passengerCount.ToString();
-        busStop.PassengerCountText.text = "0";
-        // 待機中の乗客を破棄
-        foreach (var passenger in busStop.WaitingPassengers) {
-            Destroy(passenger);
-        }
-        busStop.WaitingPassengers.Clear();
+        // TODO: 待機中の乗客でエージェントと目的地が一致するものを乗車させる
+        // 停留所にいる乗客一覧を取得
+        List<GameObject> passengers = new List<GameObject>(busStop.WaitingPassengers);
+        foreach(GameObject passenger in passengers) {
+            Passenger passengerComp = passenger.GetComponent<Passenger>();
+            // 乗客の目的地が自身の目的地と一致する場合
+            if(passengerComp.Destination == target && passengers.Count < MaxAccommodationCount) {
+                // 乗客を乗車させる（コピーを取得し、バス停にいる乗客はDestory）
+                passengers.Add(passenger);
+                passengerComp.isWaiting = false;
+                // バス停にいる乗客リストから削除
+                busStop.WaitingPassengers.Remove(passenger);
+                passenger.SetActive(false);
+            }
+        }        
     }
 
 
