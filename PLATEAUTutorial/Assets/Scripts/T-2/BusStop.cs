@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -15,12 +16,15 @@ public class BusStop : MonoBehaviour {
     public TextMeshPro PassengerCountText;
     private float _timer = 0.0f;
     private BusEnvManager _env;
+    private string uuiid = System.Guid.NewGuid().ToString();
 
     void Start() {
         _env = GetComponentInParent<BusEnvManager>();
     }
 
     void Update() {
+        PassengerCountText.text = WaitingPassengers.Count.ToString();
+        
         _timer += Time.deltaTime;
         if (_timer > SpawnIntervalSec) {
             SpawnPassenger();
@@ -38,15 +42,28 @@ public class BusStop : MonoBehaviour {
     }
 
     public List<GameObject> GetPassenger(GameObject targetDestination) {
+
         List<GameObject> passengers = new List<GameObject>();
-        foreach (var passenger in WaitingPassengers) {
-            if (passenger.GetComponent<Passenger>().Destination == targetDestination) {
+        List<GameObject> toRemove = new List<GameObject>(); // forループ中にイテレーションリストの要素を削除するとエラーをスローするので、コピーをつくる
+
+        foreach (var passenger in WaitingPassengers) { 
+            GameObject passengerDestination = passenger.GetComponent<Passenger>().Destination;
+            Debug.Log("Passenger Destination: " + passengerDestination.name);
+            Debug.Log("Target Destination: " + targetDestination.name);
+            if (passengerDestination == targetDestination) {
                 passengers.Add(passenger);
-                WaitingPassengers.Remove(passenger);
+                toRemove.Add(passenger); // 削除対象を別リストに追加
             }
         }
+
+        // 削除対象を元リストから削除
+        foreach (var passenger in toRemove) {
+            WaitingPassengers.Remove(passenger);
+        }
+
         return passengers;
     }
+
 
     public void SpawnPassenger() {
         int spawnCount = Random.Range(MinPassengerSpawnCount, MaxPassengerSpawnCount);
@@ -55,9 +72,8 @@ public class BusStop : MonoBehaviour {
             // 重ならないようにスポーンした乗客を少し横にずらす
             newPassenger.transform.position += new Vector3(Random.Range(-0.5f, 0.5f), 0.0f, Random.Range(-0.5f, 0.5f));
             // 乗客の目的地を環境内のバス停サイズでランダムに設定
-            newPassenger.GetComponent<Passenger>().Destination = _env.BusStops[Random.Range(0, _env.BusStops.Count)];
+            newPassenger.GetComponent<Passenger>().Destination = _env.GetRandomBusStop(this.gameObject);
             WaitingPassengers.Add(newPassenger);
         }
-        PassengerCountText.text = WaitingPassengers.Count.ToString();
     }
 }

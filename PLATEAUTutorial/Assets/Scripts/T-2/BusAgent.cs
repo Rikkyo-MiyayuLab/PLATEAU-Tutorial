@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
+using TMPro;
 using UnityEngine.AI;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
@@ -12,8 +14,9 @@ public class BusAgent : Agent {
     public NavMeshAgent navMeshAgent;
     public int MaxAccommodationCount = 50;
     public float MinimumSpeed = 0.5f;
-    public GameObject target; //バス停
+    public GameObject target; //現在の目的地となっているバス停
     public List<GameObject> passengers = new List<GameObject>();
+    public TextMeshPro passengersCounter;
     private BusEnvManager _env;
 
     private bool isArrived = false;
@@ -27,23 +30,20 @@ public class BusAgent : Agent {
 
         if(navMeshAgent.remainingDistance < 1.0f) {
             // バス停に到着した場合
-            if (target != null) {
-                GetRidePassengers(target.GetComponent<BusStop>());;
-            }
+            navMeshAgent.isStopped = true;
             RequestDecision();
+            /*
+            if (target != null) {
+                GetRidePassengers(target.GetComponent<BusStop>());
+                GetOffPassengers();
+            }
+            */
         }
 
-        /*
-        // 移動中かどうか確認
-        if (navMeshAgent.velocity.sqrMagnitude > 0.1f) {
-            // 移動方向を取得
-            Vector3 direction = navMeshAgent.velocity.normalized;
+        // 乗客の数を更新
+        passengersCounter.text = passengers.Count.ToString();
 
-            // 移動方向に向けて回転
-            Quaternion targetRotation = Quaternion.LookRotation(direction, Vector3.up);
-            transform.rotation = Quaternion.Lerp(transform.rotation, targetRotation, Time.deltaTime * navMeshAgent.angularSpeed);
-        }
-        */
+        
     }
 
     public override void Initialize() {}
@@ -77,17 +77,24 @@ public class BusAgent : Agent {
     /// 1. バス停のID選択
     /// </summary>
     public override void OnActionReceived(ActionBuffers actions) {
-        var Selects = actions.DiscreteActions[0]; //エージェントの選択目的地のID群
-        var Speed = actions.ContinuousActions[0]; //移動スピード
-        if(Speed < MinimumSpeed) {
-            Speed = MinimumSpeed;
+        var Select = actions.DiscreteActions[0]; //エージェントの選択目的地のID群
+        //var Speed = actions.ContinuousActions[0]; //移動スピード
+        // 現在と同じ停留所を選択した場合、再度決定を要求
+        if (target == _env.BusStops[Select]) {
+            RequestDecision();
+            return;
         }
-        target = _env.BusStops[Selects];
 
-        navMeshAgent.speed = Speed * 10;
+        // バス停に到着している場合
+        if(navMeshAgent.isStopped) {
+            Debug.Log("Arrived" + target.name);
+            target = _env.BusStops[Select]; // 行き先更新
+            GetRidePassengers(target.GetComponent<BusStop>());
+            GetOffPassengers();
+        }
         navMeshAgent.SetDestination(target.transform.position);
+        navMeshAgent.isStopped = false;
 
-        // 進行方向正面に向ける
     }
 
     private void GetOffPassengers() {
@@ -102,14 +109,15 @@ public class BusAgent : Agent {
     }
 
     private void GetRidePassengers(BusStop busStop) {
-        // TODO: 待機中の乗客でエージェントと目的地が一致するものを乗車させる
+        Debug.Log("Next" + target.name);
         List<GameObject> ridePassengers = busStop.GetPassenger(target);
         foreach (var passenger in ridePassengers) {
-            if(passengers.Count <= MaxAccommodationCount){continue
+            if(passengers.Count + 1 > MaxAccommodationCount){
+                break; // バスの最大収容人数を超えたら中止
+            }
             passengers.Add(passenger);
+            // その乗客を非表示にする
+            passenger.SetActive(false);
         }
     }
-
-
-    
 }
