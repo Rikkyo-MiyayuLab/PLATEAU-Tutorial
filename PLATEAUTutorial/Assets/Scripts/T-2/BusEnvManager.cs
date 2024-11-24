@@ -13,5 +13,12 @@ public class BusEnvManager : MonoBehaviour {
         BusStops = new List<GameObject>(GameObject.FindGameObjectsWithTag("BusStop"));
         Agents = new List<GameObject>(GameObject.FindGameObjectsWithTag("Agent"));
     }
+
+    public GameObject GetRandomBusStop(GameObject excludeBusStop) {
+        List<GameObject> busStops = new List<GameObject>(BusStops);
+        busStops.Remove(excludeBusStop);
+        int randomIndex = Random.Range(0, busStops.Count);
+        return busStops[randomIndex];
+    }
     
 }
