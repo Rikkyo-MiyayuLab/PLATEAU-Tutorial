@@ -31,6 +31,7 @@ public class BusAgent : Agent {
         if(navMeshAgent.remainingDistance < 1.0f) {
             // バス停に到着した場合
             navMeshAgent.isStopped = true;
+            navMeshAgent.velocity = Vector3.zero;
             RequestDecision();
             /*
             if (target != null) {
@@ -52,10 +53,6 @@ public class BusAgent : Agent {
         Debug.Log("OnEpisodeBegin");
         // 各種パラメータの初期化
         passengers.Clear();
-        
-        // 初回の目的地を要求: NOTE: 
-        int randomIndex = Random.Range(0, _env.BusStops.Count);
-        target = _env.BusStops[randomIndex];
         RequestDecision();
 
     }
@@ -66,7 +63,7 @@ public class BusAgent : Agent {
         sensor.AddObservation(navMeshAgent.velocity);
         //sensor.AddObservatList<ion>(passengers);
         // 目的地の位置情報
-        sensor.AddObservation(target.transform.position);
+        //sensor.AddObservation(target.transform.position);
     }
 
 
@@ -88,10 +85,11 @@ public class BusAgent : Agent {
 
         // バス停に到着している場合
         if(navMeshAgent.isStopped) {
-            Debug.Log("Arrived" + target.name);
-            target = _env.BusStops[Select]; // 行き先更新
-            GetRidePassengers(target.GetComponent<BusStop>());
+            //Debug.Log("Arrived" + target.name);
             GetOffPassengers();
+            GameObject CurrentBusstop = target;
+            target = _env.BusStops[Select]; // 行き先更新
+            GetRidePassengers(CurrentBusstop.GetComponent<BusStop>(), target);
         }
         navMeshAgent.SetDestination(target.transform.position);
         navMeshAgent.isStopped = false;
@@ -99,19 +97,25 @@ public class BusAgent : Agent {
     }
 
     private void GetOffPassengers() {
-        // 目的地に到着した場合、乗客を降ろす
+        // 降車対象のリストを準備
+        List<GameObject> passengersToRemove = new List<GameObject>();
+
         foreach (var passenger in passengers) {
-            // 乗客の目的地が自身の目的地と一致する場合
+            // 乗客の目的地が現在のバス停と一致する場合
             if (passenger.GetComponent<Passenger>().Destination == target) {
-                // 乗客を降ろす
-                passengers.Remove(passenger);
+                passengersToRemove.Add(passenger);
             }
+        }
+
+        // 降車対象をリストから削除
+        foreach (var passenger in passengersToRemove) {
+            passengers.Remove(passenger);
         }
     }
 
-    private void GetRidePassengers(BusStop busStop) {
-        Debug.Log("Next" + target.name);
-        List<GameObject> ridePassengers = busStop.GetPassenger(target);
+
+    private void GetRidePassengers(BusStop currentBusStop, GameObject nextBusStop) {
+        List<GameObject> ridePassengers = currentBusStop.GetPassenger(nextBusStop);
         foreach (var passenger in ridePassengers) {
             if(passengers.Count + 1 > MaxAccommodationCount){
                 break; // バスの最大収容人数を超えたら中止

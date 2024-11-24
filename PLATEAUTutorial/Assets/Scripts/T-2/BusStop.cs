@@ -49,7 +49,7 @@ public class BusStop : MonoBehaviour {
         foreach (var passenger in WaitingPassengers) { 
             GameObject passengerDestination = passenger.GetComponent<Passenger>().Destination;
             Debug.Log("Passenger Destination: " + passengerDestination.name);
-            Debug.Log("Target Destination: " + targetDestination.name);
+            Debug.Log("Next Destination: " + targetDestination.name); // FIXME: 次の行き先がカレントのバス停になっていて、乗客がいない
             if (passengerDestination.name == targetDestination.name) {
                 passengers.Add(passenger);
                 toRemove.Add(passenger); // 削除対象を別リストに追加
