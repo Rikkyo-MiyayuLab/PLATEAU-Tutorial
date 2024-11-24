@@ -49,6 +49,7 @@ public class BusAgent : Agent {
     public override void Initialize() {}
 
     public override void OnEpisodeBegin() {
+        Debug.Log("OnEpisodeBegin");
         // 各種パラメータの初期化
         passengers.Clear();
         

@@ -50,7 +50,7 @@ public class BusStop : MonoBehaviour {
             GameObject passengerDestination = passenger.GetComponent<Passenger>().Destination;
             Debug.Log("Passenger Destination: " + passengerDestination.name);
             Debug.Log("Target Destination: " + targetDestination.name);
-            if (passengerDestination == targetDestination) {
+            if (passengerDestination.name == targetDestination.name) {
                 passengers.Add(passenger);
                 toRemove.Add(passenger); // 削除対象を別リストに追加
             }
