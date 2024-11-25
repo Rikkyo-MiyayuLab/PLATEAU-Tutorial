@@ -27,7 +27,7 @@ public class Tower : MonoBehaviour{
         //ExMark = transform.Find("ExMark(Clone)").GetComponent<MeshRenderer>();
         //ExMark.enabled = false;
         _env = GetComponentInParent<EnvManager>();
-        _env.OnEndEpisode += (float _, int __) => {
+        _env.OnEndEpisode += (float _) => {
             NowAccCount = 0;
             //ExMark.enabled = false;
         };

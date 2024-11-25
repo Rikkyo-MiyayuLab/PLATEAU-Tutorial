@@ -11,17 +11,26 @@ public class Evacuee : MonoBehaviour {
     [Header("Movement Target")]
     public GameObject Target;
     private NavMeshAgent NavAgent;
+    private EnvManager _env;
     private List<string> excludeTowers; //1度避難したタワーのUUIDを格納するリスト
-    void Start() {
+    void Awake() {
         NavAgent = GetComponent<NavMeshAgent>();    
         excludeTowers = new List<string>(); //初期化
-        // 最短距離の避難所を探す
-        List<GameObject> towers = SearchTowers();
-        if(towers.Count > 0) {
-            Target = towers[0]; //最短距離のタワーを目標に設定
-            NavAgent.SetDestination(Target.transform.position);
-        }
+
+        _env = GetComponentInParent<EnvManager>();
+        _env.Agent.OnDidActioned += () => {
+            Debug.Log("OnDidActioned");
+            // 最短距離の避難所を探す
+            if(this != null && this.gameObject.activeSelf) {
+                List<GameObject> towers = SearchTowers();
+                if(towers.Count > 0) {
+                    Target = towers[0]; //最短距離のタワーを目標に設定
+                    NavAgent.SetDestination(Target.transform.position);
+                }
+            }
+        };
     }
+
 
 
     /// <summary>
@@ -39,8 +48,10 @@ public class Evacuee : MonoBehaviour {
             GameObject point = tower.transform.GetChild(0).gameObject;
             sortedTowerPoints.Add(point);
         }
-
-        sortedTowerPoints.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(Vector3.Distance(b.transform.position, transform.position)));
+        // NOTE: エピソード更新時にgameObjectがnullになることがあるので、nullチェックを行う
+        if(this != null) {
+            sortedTowerPoints.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(Vector3.Distance(b.transform.position, transform.position))); 
+        }
         return sortedTowerPoints;
     }
 
@@ -56,7 +67,7 @@ public class Evacuee : MonoBehaviour {
             gameObject.SetActive(false);
         } else { //キャパシティがいっぱいの場合、次のタワーを探す
             excludeTowers.Add(tower.uuid);
-            List<GameObject> towers = SearchTowers(excludeTowers);
+            List<GameObject> towers = SearchTowers(excludeTowers); // 次のタワーを探さないバグあり。
             if(towers.Count > 0) {
                 Target = towers[0]; //最短距離のタワーを目標に設定
             }

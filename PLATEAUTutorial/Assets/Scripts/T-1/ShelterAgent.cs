@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
@@ -10,7 +11,9 @@ public class ShelterManagementAgent : Agent {
     public GameObject[] ShelterCandidates;
     public Material SelectedMaterial;
     public Material NonSelectMaterial;
+    public Action OnDidActioned;
     private EnvManager _env;
+
 
     void Start() {
         _env = GetComponentInParent<EnvManager>();
@@ -18,7 +21,7 @@ public class ShelterManagementAgent : Agent {
     public override void Initialize() {
         //_env.OnInitializedEnv?.Invoke();
         if(ShelterCandidates.Length == 0) {
-            Debug.LogError("No shelter candidates");
+            //Debug.LogError("No shelter candidates");
             // NOTE: 予め候補地は事前に設定させておくこと
             ShelterCandidates = GameObject.FindGameObjectsWithTag("Shelter");
         }
@@ -81,6 +84,7 @@ public class ShelterManagementAgent : Agent {
                 Debug.LogError("Invalid action");
             }
         }
+        OnDidActioned?.Invoke();
     }
 
 
