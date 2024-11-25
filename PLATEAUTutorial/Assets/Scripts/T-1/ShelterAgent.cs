@@ -42,13 +42,13 @@ public class ShelterManagementAgent : Agent {
     public override void CollectObservations(VectorSensor sensor) {
 
         foreach(GameObject shelter in ShelterCandidates) {
-            Debug.Log("ShelterPos?" + shelter.transform.position);
-            sensor.AddObservation(shelter.transform.position);
+            Debug.Log("ShelterPos?" + shelter.transform.GetChild(0).gameObject.transform.position);
+            sensor.AddObservation(shelter.transform.GetChild(0).gameObject.transform.position);
             sensor.AddObservation(shelter.GetComponent<Tower>().currentCapacity);
         }
         // 観測のタイミングで避難者が避難してGameObjectが消えることがあるので、ここでコピーを作成
         List<GameObject> evacuees = new List<GameObject>(_env.Evacuees);
-        //sensor.AddObservation(evacuees.Count);
+        sensor.AddObservation(evacuees.Count);
 
         // 避��者の位置情報を追加
         foreach(GameObject evacuee in evacuees) {

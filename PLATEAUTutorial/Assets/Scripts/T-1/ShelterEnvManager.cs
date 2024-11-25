@@ -26,6 +26,7 @@ public class EnvManager : MonoBehaviour {
     [Header("Objects")]
     [System.NonSerialized]
     public List<GameObject> Evacuees; // 避難者のリスト
+    [System.NonSerialized]
     public List<GameObject> Shelters; // 現在の避難所のリスト
 
     [Header("UI Elements")]
@@ -46,7 +47,7 @@ public class EnvManager : MonoBehaviour {
     private Color gizmoColor = Color.red; // Gizmoの色
 
     void Start() {
-        NavMesh.pathfindingIterationsPerFrame = 10000;
+        NavMesh.pathfindingIterationsPerFrame = 1000000;
         Agent = AgentObj.GetComponent<ShelterManagementAgent>();
         Evacuees = new List<GameObject>(); // 避難者のリストを初期化
         Shelters = new List<GameObject>(); // 避難所のリストを初期化
