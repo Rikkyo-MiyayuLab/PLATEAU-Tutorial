@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
@@ -61,9 +62,30 @@ public class BusAgent : Agent {
         // 自身の位置・速度情報
         sensor.AddObservation(transform.position);
         sensor.AddObservation(navMeshAgent.velocity);
-        //sensor.AddObservatList<ion>(passengers);
-        // 目的地の位置情報
-        //sensor.AddObservation(target.transform.position);
+        sensor.AddObservation(passengers.Count);
+
+        // 目的地別の乗客数（リストサイズはあらかじめバス停数で初期化）
+        List<float> passengerCountsPerDestinations = Enumerable.Repeat(0.0f, _env.BusStops.Count).ToList();
+        foreach(GameObject passenger in passengers) {
+            var destination = passenger.GetComponent<Passenger>().Destination;
+            var busStopIdx = _env.BusStops.IndexOf(destination);
+            passengerCountsPerDestinations[busStopIdx] += 1.0f;
+        }
+        sensor.AddObservation(passengerCountsPerDestinations);
+        
+        // 各バス停の情報
+        foreach (var busStop in _env.BusStops) {
+            sensor.AddObservation(busStop.transform.position);
+            // そのバス停までの残距離
+            float distanceToBusStop = Vector3.Distance(transform.position, busStop.transform.position);
+            sensor.AddObservation(distanceToBusStop);
+            // バス停ごとの待ち人数と平均待ち時間を取得
+            int currentWaitSize = busStop.GetComponent<BusStop>().WaitingPassengers.Count;
+            float currentAvgWaitTime = busStop.GetComponent<BusStop>().AvarageWaitTimeSec;
+            sensor.AddObservation(currentWaitSize);
+            sensor.AddObservation(currentAvgWaitTime);
+        }
+
     }
 
 
@@ -110,6 +132,7 @@ public class BusAgent : Agent {
         // 降車対象をリストから削除
         foreach (var passenger in passengersToRemove) {
             passengers.Remove(passenger);
+            AddReward(1.0f);
         }
     }
 
@@ -121,6 +144,7 @@ public class BusAgent : Agent {
                 break; // バスの最大収容人数を超えたら中止
             }
             passengers.Add(passenger);
+            AddReward(1.0f);
             // その乗客を非表示にする
             passenger.SetActive(false);
         }
