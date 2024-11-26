@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Collections.Generic;
+using System;
 using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
@@ -10,7 +11,9 @@ public class ShelterManagementAgent : Agent {
     public GameObject[] ShelterCandidates;
     public Material SelectedMaterial;
     public Material NonSelectMaterial;
+    public Action OnDidActioned;
     private EnvManager _env;
+
 
     void Start() {
         _env = GetComponentInParent<EnvManager>();
@@ -18,7 +21,7 @@ public class ShelterManagementAgent : Agent {
     public override void Initialize() {
         //_env.OnInitializedEnv?.Invoke();
         if(ShelterCandidates.Length == 0) {
-            Debug.LogError("No shelter candidates");
+            //Debug.LogError("No shelter candidates");
             // NOTE: 予め候補地は事前に設定させておくこと
             ShelterCandidates = GameObject.FindGameObjectsWithTag("Shelter");
         }
@@ -39,13 +42,13 @@ public class ShelterManagementAgent : Agent {
     public override void CollectObservations(VectorSensor sensor) {
 
         foreach(GameObject shelter in ShelterCandidates) {
-            Debug.Log("ShelterPos?" + shelter.transform.position);
-            sensor.AddObservation(shelter.transform.position);
+            Debug.Log("ShelterPos?" + shelter.transform.GetChild(0).gameObject.transform.position);
+            sensor.AddObservation(shelter.transform.GetChild(0).gameObject.transform.position);
             sensor.AddObservation(shelter.GetComponent<Tower>().currentCapacity);
         }
         // 観測のタイミングで避難者が避難してGameObjectが消えることがあるので、ここでコピーを作成
         List<GameObject> evacuees = new List<GameObject>(_env.Evacuees);
-        //sensor.AddObservation(evacuees.Count);
+        sensor.AddObservation(evacuees.Count);
 
         // 避��者の位置情報を追加
         foreach(GameObject evacuee in evacuees) {
@@ -81,6 +84,7 @@ public class ShelterManagementAgent : Agent {
                 Debug.LogError("Invalid action");
             }
         }
+        OnDidActioned?.Invoke();
     }
 
 
