@@ -38,6 +38,8 @@ public class BusStop : MonoBehaviour {
                 totalWaitTime += passenger.GetComponent<Passenger>().WaitTimeSec;
             }
             AvarageWaitTimeSec = totalWaitTime / WaitingPassengers.Count;
+        } else {
+            AvarageWaitTimeSec = 0.0f;
         }
     }
 
