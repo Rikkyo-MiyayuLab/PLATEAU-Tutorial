@@ -6,3 +6,4 @@ PLATEAUTutorial/Assets/Easy[[:space:]]Primitive[[:space:]]People/** filter=lfs d
 PLATEAUTutorial/Assets/StreamingAssets/** filter=lfs diff=lfs merge=lfs -text
 PLATEAUTutorial/Assets/TextMesh[[:space:]]Pro/** filter=lfs diff=lfs merge=lfs -text
 PLATEAUTutorial/Assets/School[[:space:]]Bus/** filter=lfs diff=lfs merge=lfs -text
+PLATEAUTutorial/Assets/Models/** filter=lfs diff=lfs merge=lfs -text
