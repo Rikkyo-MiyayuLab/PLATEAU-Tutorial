@@ -6,9 +6,6 @@ using TMPro;
 
 /// <summary>
 /// シミュレータ環境全般の制御を行うクラス
-/// TODO: このクラスは最終的に、以下２つの親クラスとして変更する予定
-/// ・T-1: 避難所配置最適化シミュレーションクラス
-/// ・T-2: 観光地バス自動運転シミュレーションクラス  
 /// </summary>
 public class EnvManager : MonoBehaviour {
 
@@ -16,7 +13,6 @@ public class EnvManager : MonoBehaviour {
     public float MaxSeconds = 60.0f; // シミュレーションの最大時間（秒）
     public int SpawnEvacueeSize;
     public GameObject SpawnEvacueePref; // 避難者のプレハブ
-    public GameObject ExMarkPref;
     public float SpawnRadius = 10f; // スポーンエリアの半径
     public Vector3 spawnCenter = Vector3.zero; // スポーンエリアの中心位置
 
@@ -116,16 +112,6 @@ public class EnvManager : MonoBehaviour {
                 tower.uuid = System.Guid.NewGuid().ToString();
                 tower.MaxCapacity = 10;
                 tower.NowAccCount = 0;
-            }
-            // ExMarkの追加（存在しない場合のみ）
-            if(shelter.transform.Find("ExMark") == null) {
-                // GameObjectをshlterを親にして生成
-                /* NOTE : エピソード終了毎に無限生成されてしまう
-                GameObject exMark = Instantiate(ExMarkPref, shelter.transform);
-                exMark.transform.localPosition = Vector3.zero;
-                exMark.transform.parent = shelter.transform;
-                exMark.GetComponent<MeshRenderer>().enabled = false; // 非表示にする
-                */
             }
         }
     }

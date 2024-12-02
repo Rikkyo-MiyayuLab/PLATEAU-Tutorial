@@ -52,7 +52,7 @@ GameObject:
   - component: {fileID: 4332931538473119548}
   - component: {fileID: 3949787001333896410}
   m_Layer: 0
-  m_Name: EvacueeMale
+  m_Name: Evacuee
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0

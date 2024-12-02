@@ -19,7 +19,6 @@ public class ShelterManagementAgent : Agent {
         _env = GetComponentInParent<EnvManager>();
     }
     public override void Initialize() {
-        //_env.OnInitializedEnv?.Invoke();
         if(ShelterCandidates.Length == 0) {
             //Debug.LogError("No shelter candidates");
             // NOTE: 予め候補地は事前に設定させておくこと
@@ -50,7 +49,7 @@ public class ShelterManagementAgent : Agent {
         List<GameObject> evacuees = new List<GameObject>(_env.Evacuees);
         sensor.AddObservation(evacuees.Count);
 
-        // 避��者の位置情報を追加
+        // 避難者の位置情報を追加
         foreach(GameObject evacuee in evacuees) {
             if(evacuee != null) {
                 sensor.AddObservation(evacuee.transform.position);

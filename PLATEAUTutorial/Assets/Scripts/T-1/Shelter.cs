@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
-/// 津波避難タワーに関するスクリプト（オブジェクト１台分）
+/// 避難所に関するスクリプト（オブジェクト１台分）
 /// 現在の収容人数や、受け入れ可否等のデータを用意
 /// </summary>
 public class Tower : MonoBehaviour{
@@ -19,18 +19,12 @@ public class Tower : MonoBehaviour{
     public delegate void AcceptRejected(int NowAccCount) ; //収容定員が超過した時に発火する
     public AcceptRejected onRejected;
 
-    private MeshRenderer ExMark; //受け入れ不可を示すマーク
-
     private EnvManager _env;
 
     void Start() {
-        //ExMark = transform.Find("ExMark(Clone)").GetComponent<MeshRenderer>();
-        //ExMark.enabled = false;
         _env = GetComponentInParent<EnvManager>();
-        //MaxCapacity = 0;
         _env.OnEndEpisode += (float _) => {
             NowAccCount = 0;
-            //ExMark.enabled = false;
         };
     }
 
@@ -38,7 +32,6 @@ public class Tower : MonoBehaviour{
         currentCapacity = MaxCapacity - NowAccCount;
         if (currentCapacity <= 0) {
             onRejected?.Invoke(NowAccCount);
-            //ExMark.enabled = true;
         }
     }
 
