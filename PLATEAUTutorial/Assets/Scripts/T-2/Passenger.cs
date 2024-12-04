@@ -17,9 +17,5 @@ public class Passenger : MonoBehaviour {
 
     public void ResetTimer() {
         _timer = 0.0f;
-    }
-
-
-
-    
+    }    
 }

@@ -7,11 +7,34 @@ using TMPro;
 
 public class BusStop : MonoBehaviour {
     
+    /// <summary>
+    /// 生成する乗客のプレハブ
+    /// </summary>
     public GameObject PassengerPrefab;
+    
+    /// <summary>
+    /// 乗客の生成間隔（秒）
+    /// </summary>
     public float SpawnIntervalSec = 2.0f;
+
+    /// <summary>
+    /// １回あたりの最大乗客生成数
+    /// </summary>
     public int MaxPassengerSpawnCount = 10;
+
+    /// <summary>
+    /// １回あたりの最小乗客生成数
+    /// </summary>
     public int MinPassengerSpawnCount = 1;
+
+    /// <summary>
+    /// 現在のバス停にいる乗客の平均待ち時間（秒）
+    /// </summary>
     public float AvarageWaitTimeSec = 0.0f; // 乗客の平均待ち時間
+
+    /// <summary>
+    /// 現在のバス停にいる乗客のオブジェクトリスト
+    /// </summary>
     public List<GameObject> WaitingPassengers = new List<GameObject>();
     public TextMeshPro PassengerCountText;
     private float _timer = 0.0f;

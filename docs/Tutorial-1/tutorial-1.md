@@ -1,5 +1,4 @@
-# PLATEAU チュートリアル
-# 避難所配置の最適化シミュレーション 実装ガイド
+# PLATEAU チュートリアル <br> 避難所配置の最適化シミュレーション 実装ガイド
 
 # 目的
 津波や洪水等の災害発生時において、最適な避難所の配置計画を作成することを目指します。避難時間や避難率の最適化を目標に、AIに都市モデル内でどの建物を避難所にすべきかを学習させ、動的に変化する避難者の配置分布から最適な避難所配置を導きます。
@@ -16,7 +15,7 @@ Unityアカウントを作成し、Unity Hubをインストールします。
 [Unity Hub](https://unity.com/ja/download)のダウンロードページを開き、お使いのOSに合わせたバージョンをインストールしてください。
 
 Unity Hubインストール後、Unity Hubを起動し、`インストール`タブから`Unity 2022.3.4f1`をインストールします。
-![alt text](T-1Images/EditorInstall.png)
+![alt text](../Common/EditorInstall.png)
 
 インストールが完了したら、`プロジェクト`タブから`新規`を選択し、`Unity 2022.3.4f1`を選択してプロジェクトを作成します。
 
@@ -31,7 +30,7 @@ PLATEAU SDKより、使用したい都市モデルをインポートします。
 
 ※今回は題材として、横須賀市市役所周辺のモデルをインポートします。
 
-![alt text](image-7.png)
+![alt text](../Common/image-7.png)
 
 インポート後、全体制御用のGameObjectを作成します。名前は任意ですが、今回は`Field`としておきます。
 
@@ -223,9 +222,10 @@ AIがシミュレーション中に避難所として指定できる建物の候
         }
 
     }
-
     ```
-### 4-2. 避難所建物容プログラムの作成
+    作成後、Assetsフォルダ内にある`Evacuee`オブジェクトにアタッチしてください。
+
+### 4-2. 避難所建物用プログラムの作成
 - Shelter.cs
   ```cs
   using System.Collections;
@@ -280,6 +280,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
     }
 
   ```
+  作成後、シーン内に設定した各避難所の建物オブジェクトにアタッチしてください。
 
 ### 4-3. AIプログラムの作成
 - ShelterAgent.cs
@@ -376,6 +377,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
     }
 
   ```
+  シーン内の`ShelterManagementAgent`オブジェクトにアタッチしてください。
 
 ### 4-4. シミュレーション制御プログラムの作成
 - ShelterEnvManager.cs
@@ -528,18 +530,117 @@ AIがシミュレーション中に避難所として指定できる建物の候
             }
             return (float)evacuatedSize / evacueeSize;
         }
-
-
     }
 
     ```
 
 ## 5. シミュレーション設定
 
-## 6. 学習の実行
+### 5-1. `ShelterManagementAgent`の設定
+AIの挙動を制御する`ShelterManagementAgent`の設定を行います。Inspectorから`Behavior Parameters`の以下項目を設定します。
+- `Behavior Parameters`
+```
+Actions
+    Continuous Actions : 0
+    Discrete Branches : 9（避難所の数だけ）
+        Branch 0 Size : 2 （二値分類の為）
+        ...(以下候補地数分)
+```
+![alt text](image-15.png)
 
-## 7. 学習済みモデルの適用と運用
+今回エピソード終了は、次の全体制御用プログラムで行っているため、`Max Steps`は`0`のままで設定してください。
 
-## （付録）モデル分析
+### 5-2. `EnvManager`の設定
+シミュレーション全体の条件を設定する`EnvManager`の設定を行います。Inspectorから以下の項目を設定します。
+- `EnvManager`
+```
+<Environment Settings>
+Max Seconds : 120 （シミュレーションの最大時間（秒））
+Spawn Evacuee Size : 50 （生成する避難者の数）// 数が多いと処理が重くなるため、適宜調整してください。
+Spawn Radius : 10 （避難者のスポーンエリアの半径）// エディタ上に赤い円で表示されます
+Spawn Center : (0,0,0) （避難者のスポーンエリアの中心位置）
+Agent : ShelterManagementAgent （エージェントのオブジェクト）
+```
+
+![alt text](image-16.png)
+
+### 5-3. `Evacuee`の設定
+避難者の挙動を制御する`Evacuee`の設定を行います。Assets内から`Evacuee`オブジェクトを選択し、Inspectorから以下の項目を設定します。設定値は任意です。
+- `NavMesh Agent`
+```
+<Steering>
+Speed : 3.5 （避難者の移動速度 m/s）
+Angular Speed : 120 （避難者の回転速度）
+```
+![alt text](image-17.png)
+
+
+### 5-4. ハイパーパラメータの設定
+```yaml
+behaviors:
+  ShelterSelect: # ここの名前が、BusAgentのBehavior Nameと一致している必要があります
+    trainer_type: ppo
+    hyperparameters:
+      batch_size: 64
+      buffer_size: 12000
+      learning_rate: 0.0003
+      beta: 0.001
+      epsilon: 0.2
+      lambd: 0.99
+      num_epoch: 3
+      learning_rate_schedule: linear
+    network_settings:
+      normalize: true
+      hidden_units: 128
+      num_layers: 2
+      vis_encode_type: simple
+    reward_signals:
+      extrinsic:
+        gamma: 0.99
+        strength: 1.0
+    keep_checkpoints: 5
+    max_steps: 500000
+    time_horizon: 1000
+    summary_freq: 10
+```
+
+## 6. 学習の実行と結果の確認
+
+### 6-1. 学習の実行
+本プロジェクトのルートディレクトリ上でターミナルを開き、以下のコマンドを実行します。
+``` bash
+mlagents-learn Assets/Config/Tutorial-1.yaml --run-id=ShelterAgent
+```
+準備が完了すると、以下のような表示になり待機状態になります。
+
+![alt text](../Common/image-22.png)
+
+この状態で、Unity Editor上の実行ボタンを押すと、学習が開始されます。
+
+![alt text](../Common/image-23.png)
+
+### 6-2. 学習結果の分析
+
+学習が完了すると、`results`ディレクトリに学習した結果のニューラルネットワークモデルが保存されます。学習結果を確認するには、以下のコマンドを実行します。
+``` bash
+tensorboard --logdir=./results
+```
+![alt text](../Common/image-24.png)
+
+### 6-3. 学習済みモデルを使用してシミュレーションを動かす
+学習済みモデルを使用して、シミュレーションを動かす手順は以下の通りです。
+
+1. エージェントにモデルを割り当てる
+    学習済みモデルをAssetsフォルダにコピーし、シーン内の`BusAgent`を選択し`Behavior Parameters`の`Model`にコピーしたモデルを割り当てます。
+
+    ![alt text](image-18.png)
+
+2. シーンを実行する
+    Unity Editor上で実行ボタンを押すと、学習済みモデルを使用してシミュレーションが動きます。
+
+    ![alt text](../Common/image-23.png)
+
+    エージェントはシミュレーション開始時に、都市内の避難者の分布や建物の収容人数を観測し、避難所の配置を決定します。その後、避難者が避難所に向かう様子を観察することができます。
+
 
 

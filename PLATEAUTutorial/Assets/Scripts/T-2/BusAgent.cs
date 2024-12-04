@@ -14,7 +14,6 @@ public class BusAgent : Agent {
 
     public NavMeshAgent navMeshAgent;
     public int MaxAccommodationCount = 50;
-    public float MinimumSpeed = 0.5f;
     public GameObject target; //現在の目的地となっているバス停
     public List<GameObject> passengers = new List<GameObject>();
     public TextMeshPro passengersCounter;
@@ -34,12 +33,6 @@ public class BusAgent : Agent {
             navMeshAgent.isStopped = true;
             navMeshAgent.velocity = Vector3.zero;
             RequestDecision();
-            /*
-            if (target != null) {
-                GetRidePassengers(target.GetComponent<BusStop>());
-                GetOffPassengers();
-            }
-            */
         }
 
         // 乗客の数を更新
