@@ -41,9 +41,18 @@ public class Evacuee : MonoBehaviour {
     /// <returns>localField内のTowerオブジェクトのリスト</returns>
     private List<GameObject> SearchTowers(List<string> excludeTowerUUIDs = null) {
         GameObject[] towers = GameObject.FindGameObjectsWithTag("Shelter");
+        GameObject[] constShelters = GameObject.FindGameObjectsWithTag("ConstShelter");
+        List<GameObject> Iterates = new List<GameObject>();
+        foreach (var shelter in towers) {
+            Iterates.Add(shelter);
+        }
+        foreach (var shelter in constShelters) {
+            Iterates.Add(shelter);
+        }
+
         List<GameObject> sortedTowerPoints = new List<GameObject>();
-        foreach (var tower in towers) {
-            if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Tower>().uuid)) {
+        foreach (var tower in Iterates) {
+            if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Shelter>().uuid)) {
                 continue;
             }
             GameObject point = tower.transform.GetChild(0).gameObject;
@@ -59,7 +68,7 @@ public class Evacuee : MonoBehaviour {
     /// <summary>
     /// 避難を行う
     /// </summary>
-    public void Evacuation(Tower tower) {
+    public void Evacuation(Shelter tower) {
         if(isEvacuating) {
             return;
         }

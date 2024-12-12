@@ -23,7 +23,8 @@ public class EnvManager : MonoBehaviour {
     [System.NonSerialized]
     public List<GameObject> Evacuees; // 避難者のリスト
     [System.NonSerialized]
-    public List<GameObject> Shelters; // 現在の避難所のリスト
+    public List<GameObject> CurrentShelters; // 現在のアクティブな避難所のリスト
+    public List<GameObject> Shelters; // 全避難所のリスト
 
     [Header("UI Elements")]
     public TextMeshProUGUI stepCounter;
@@ -46,7 +47,7 @@ public class EnvManager : MonoBehaviour {
         NavMesh.pathfindingIterationsPerFrame = 1000000;
         Agent = AgentObj.GetComponent<ShelterManagementAgent>();
         Evacuees = new List<GameObject>(); // 避難者のリストを初期化
-        Shelters = new List<GameObject>(); // 避難所のリストを初期化
+        CurrentShelters = new List<GameObject>(); // 避難所のリストを初期化
         currentStep = Agent.StepCount;
 
         OnEndEpisode += (float evacuateRate) => {
@@ -56,6 +57,23 @@ public class EnvManager : MonoBehaviour {
             Agent.SetReward(evacuateRate * 100);
             Agent.EndEpisode();
         };
+
+        // 避難所登録
+        Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
+        // 固定値の避難所を追加
+        GameObject[] constSheleters = GameObject.FindGameObjectsWithTag("ConstShelter");
+        foreach (var shelter in constSheleters) {
+            Shelters.Add(shelter);
+        }
+        // コンポーネントの初期化
+        foreach (var shelter in Shelters) {
+            if(shelter.GetComponent<Shelter>() == null) {
+                Shelter tower = shelter.AddComponent<Shelter>();
+                tower.uuid = System.Guid.NewGuid().ToString();
+                tower.MaxCapacity = 10;
+                tower.NowAccCount = 0;
+            }
+        }
     }
 
     void OnDrawGizmos() {
@@ -77,6 +95,7 @@ public class EnvManager : MonoBehaviour {
     /// </summary>
     public void OnEpisodeBegin() {
         EnableEnv = false;
+        Dispose();
         Create();
         OnStartEpisode?.Invoke();
         EnableEnv = true;
@@ -87,13 +106,12 @@ public class EnvManager : MonoBehaviour {
             Destroy(evacuee);
         }
         Evacuees = new List<GameObject>(); // 新しいリストを作成
-        Shelters = new List<GameObject>(); // 新しいリストを作成
+        CurrentShelters = new List<GameObject>(); // 新しいリストを作成
     }
 
 
     public void Create() {
 
-        Dispose();
 
         for (int i = 0; i < SpawnEvacueeSize; i++) {
             Vector3 spawnPos = GetRandomPositionOnNavMesh();
@@ -105,8 +123,9 @@ public class EnvManager : MonoBehaviour {
             }
         }
 
-        Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
-        foreach (var shelter in Shelters) {
+        /*
+        CurrentShelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
+        foreach (var shelter in CurrentShelters) {
             if(shelter.GetComponent<Tower>() == null) {
                 Tower tower = shelter.AddComponent<Tower>();
                 tower.uuid = System.Guid.NewGuid().ToString();
@@ -114,6 +133,7 @@ public class EnvManager : MonoBehaviour {
                 tower.NowAccCount = 0;
             }
         }
+        */
     }
 
 

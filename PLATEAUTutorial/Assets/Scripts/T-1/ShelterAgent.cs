@@ -8,7 +8,7 @@ using Unity.MLAgents.Sensors;
 
 public class ShelterManagementAgent : Agent {
     
-    public GameObject[] ShelterCandidates;
+    public GameObject[] ShelterCandidates; //エージェントが操作する避難所の候補リスト
     public Material SelectedMaterial;
     public Material NonSelectMaterial;
     public Action OnDidActioned;
@@ -43,7 +43,7 @@ public class ShelterManagementAgent : Agent {
         foreach(GameObject shelter in ShelterCandidates) {
             Debug.Log("ShelterPos?" + shelter.transform.GetChild(0).gameObject.transform.position);
             sensor.AddObservation(shelter.transform.GetChild(0).gameObject.transform.position);
-            sensor.AddObservation(shelter.GetComponent<Tower>().currentCapacity);
+            sensor.AddObservation(shelter.GetComponent<Shelter>().currentCapacity);
         }
         // 観測のタイミングで避難者が避難してGameObjectが消えることがあるので、ここでコピーを作成
         List<GameObject> evacuees = new List<GameObject>(_env.Evacuees);
@@ -72,11 +72,11 @@ public class ShelterManagementAgent : Agent {
             int select = Selects[i]; // 0:非選択、1:選択
             GameObject Shelter = ShelterCandidates[i];
             if(select == 1) {
-                _env.Shelters.Add(Shelter);
+                _env.CurrentShelters.Add(Shelter);
                 Shelter.tag = "Shelter";
                 Shelter.GetComponent<MeshRenderer>().material = SelectedMaterial;
             } else if(select == 0) {
-                _env.Shelters.Remove(Shelter);
+                _env.CurrentShelters.Remove(Shelter);
                 Shelter.tag = "Untagged";
                 Shelter.GetComponent<MeshRenderer>().material = NonSelectMaterial;
             } else {
