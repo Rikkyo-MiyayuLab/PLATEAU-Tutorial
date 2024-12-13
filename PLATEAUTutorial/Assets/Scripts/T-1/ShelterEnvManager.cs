@@ -78,7 +78,7 @@ public class EnvManager : MonoBehaviour {
 
     void OnDrawGizmos() {
         Gizmos.color = gizmoColor; // Gizmoの色を設定
-        Gizmos.DrawWireSphere(spawnCenter, SpawnRadius); // 中心から半径のワイヤーフレームの球体を描画
+        DrawWireCircle(spawnCenter, SpawnRadius);
     }
 
     void FixedUpdate() {
@@ -165,6 +165,25 @@ public class EnvManager : MonoBehaviour {
             }
         }
         return (float)evacuatedSize / evacueeSize;
+    }
+
+
+
+    private void DrawWireCircle(Vector3 center, float radius, int segments = 36) {
+        float angle = 0f;
+        float angleStep = 360f / segments;
+
+        Vector3 prevPoint = center + new Vector3(radius, 0, 0); // 初期点
+
+        for (int i = 1; i <= segments; i++) {
+            angle += angleStep;
+            float rad = Mathf.Deg2Rad * angle;
+
+            Vector3 newPoint = center + new Vector3(Mathf.Cos(rad) * radius, 5, Mathf.Sin(rad) * radius);
+            Gizmos.DrawLine(prevPoint, newPoint);
+
+            prevPoint = newPoint; // 次の線を描画するために現在の点を更新
+        }
     }
 
 
