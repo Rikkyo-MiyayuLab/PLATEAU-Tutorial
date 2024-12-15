@@ -9,6 +9,7 @@ TagManager:
   - BusStop
   - Agent
   - ConstShelter
+  - SpawnPos
   layers:
   - Default
   - TransparentFX

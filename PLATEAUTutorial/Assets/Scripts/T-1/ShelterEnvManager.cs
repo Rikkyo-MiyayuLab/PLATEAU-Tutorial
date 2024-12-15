@@ -16,8 +16,14 @@ public class EnvManager : MonoBehaviour {
         Inference
     }
 
+    public enum SpawnMode {
+        Random,
+        Custom,
+    }
+
     [Header("Environment Settings")]
     public SimulateMode Mode = SimulateMode.Train; // 実行モード（Train or Inference）
+    public SpawnMode EvacSpawnMode = SpawnMode.Random; // 避難者のスポーンモード
     public float TimeScale = 1.0f; // シミュレーションの時間スケール
     /// <summary>
     /// 生成する避難者の人数に合わせて避難所の収容人数をスケーリングします.
@@ -110,8 +116,10 @@ public class EnvManager : MonoBehaviour {
     }
 
     void OnDrawGizmos() {
-        Gizmos.color = gizmoColor; // Gizmoの色を設定
-        DrawWireCircle(spawnCenter, SpawnRadius);
+        if(EvacSpawnMode == SpawnMode.Random) {
+            Gizmos.color = gizmoColor; // Gizmoの色を設定
+            DrawWireCircle(spawnCenter, SpawnRadius);
+        }
     }
 
     void FixedUpdate() {
@@ -144,41 +152,44 @@ public class EnvManager : MonoBehaviour {
 
 
     public void Create() {
-
-
-        for (int i = 0; i < SpawnEvacueeSize; i++) {
-            Vector3 spawnPos = GetRandomPositionOnNavMesh();
-            spawnPos.y = 1.2f;
-            if (spawnPos != Vector3.zero) {
-                GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity, transform);
-                evacuee.tag = "Evacuee";
-                Evacuees.Add(evacuee);
+        // 避難者のスポーン
+        if(EvacSpawnMode == SpawnMode.Custom) {
+            GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+            foreach (var spawnPoint in spawnPoints) {
+                var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+                float radius = point.SpawnRadius;
+                Vector3 spawnCenter = spawnPoint.transform.position;
+                Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
+                for (int i = 0; i < point.SpawnSize; i++) {
+                    SpawnEvacuee(spawnPos);
+                }
+            }
+        } else {
+            for (int i = 0; i < SpawnEvacueeSize; i++) {
+                Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
+                if (spawnPos != Vector3.zero) {
+                    SpawnEvacuee(spawnPos);
+                }
             }
         }
-
-        /*
-        CurrentShelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
-        foreach (var shelter in CurrentShelters) {
-            if(shelter.GetComponent<Tower>() == null) {
-                Tower tower = shelter.AddComponent<Tower>();
-                tower.uuid = System.Guid.NewGuid().ToString();
-                tower.MaxCapacity = 10;
-                tower.NowAccCount = 0;
-            }
-        }
-        */
     }
 
 
+    private void SpawnEvacuee(Vector3 spawnPos) {
+        GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity, transform);
+        evacuee.tag = "Evacuee";
+        Evacuees.Add(evacuee);
+    }
+
     /// <summary>
-    /// ナビメッシュ上の任意の座標を取得する。
+    /// 範囲内のナビメッシュ上の任意の座標を取得する。
     /// </summary>
     /// <returns>ランダムなナビメッシュ上の座標 or Vector3.zero</returns>
-    private Vector3 GetRandomPositionOnNavMesh() {
-        Vector3 randomDirection = Random.insideUnitSphere * SpawnRadius; // 半径内のランダムな位置を取得
-        randomDirection += spawnCenter; // 中心位置を加算
+    private Vector3 GetRandomPositionOnNavMesh(float radius, Vector3 center) {
+        Vector3 randomDirection = Random.insideUnitSphere * radius; // 半径内のランダムな位置を取得
+        randomDirection += center; // 中心位置を加算
         NavMeshHit hit;
-        if (NavMesh.SamplePosition(randomDirection, out hit, SpawnRadius, NavMesh.AllAreas)) {
+        if (NavMesh.SamplePosition(randomDirection, out hit, radius, NavMesh.AllAreas)) {
             return hit.position;
         }
         return Vector3.zero; // ナビメッシュが見つからなかった場合
