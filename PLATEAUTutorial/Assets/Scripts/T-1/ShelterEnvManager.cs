@@ -71,7 +71,6 @@ public class EnvManager : MonoBehaviour {
     public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
     private int currentStep;
     private float currentTimeSec;
-    private Color gizmoColor = Color.red; // Gizmoの色
 
     void Start() {
         if(Mode == SimulateMode.Inference) {
@@ -117,7 +116,7 @@ public class EnvManager : MonoBehaviour {
 
     void OnDrawGizmos() {
         if(EvacSpawnMode == SpawnMode.Random) {
-            Gizmos.color = gizmoColor; // Gizmoの色を設定
+            Gizmos.color = Color.red; // Gizmoの色を設定
             DrawWireCircle(spawnCenter, SpawnRadius);
         }
     }
