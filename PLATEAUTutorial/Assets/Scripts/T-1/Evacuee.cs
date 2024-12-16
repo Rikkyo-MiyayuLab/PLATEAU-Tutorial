@@ -20,8 +20,7 @@ public class Evacuee : MonoBehaviour {
 
         _env = GetComponentInParent<EnvManager>();
         _env.Agent.OnDidActioned += () => {
-            Debug.Log("OnDidActioned");
-            // 最短距離の避難所を探す
+            // エージェントが建物を選択したことを検知して最短距離の避難所を探す
             if(this != null && this.gameObject.activeSelf) {
                 List<GameObject> towers = SearchTowers();
                 if(towers.Count > 0) {

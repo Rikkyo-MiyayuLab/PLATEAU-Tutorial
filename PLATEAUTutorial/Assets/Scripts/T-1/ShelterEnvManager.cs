@@ -1,3 +1,4 @@
+/**必要な名前空間の参照*/
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -11,20 +12,21 @@ using Newtonsoft.Json;
 /// シミュレータ環境全般の制御を行うクラス
 /// </summary>
 public class EnvManager : MonoBehaviour {
+    /**シミュレーションモードの選択を定義*/
     public enum SimulateMode {
-        Train,
-        Inference
+        Train, // モデル訓練
+        Inference // モデル推論
     }
 
     public enum SpawnMode {
-        Random,
-        Custom,
+        Random, // 一定の範囲内でランダムに出現
+        Custom, // 自身でスポーン位置・範囲を設定
     }
 
     [Header("Environment Settings")]
-    public SimulateMode Mode = SimulateMode.Train; // 実行モード（Train or Inference）
-    public SpawnMode EvacSpawnMode = SpawnMode.Random; // 避難者のスポーンモード
-    public float TimeScale = 1.0f; // シミュレーションの時間スケール
+    public SimulateMode Mode = SimulateMode.Train; 
+    public SpawnMode EvacSpawnMode = SpawnMode.Random; 
+    public float TimeScale = 1.0f; // 推論時のシミュレーションの時間スケール
     /// <summary>
     /// 生成する避難者の人数に合わせて避難所の収容人数をスケーリングします.
     /// </summary>
@@ -64,8 +66,6 @@ public class EnvManager : MonoBehaviour {
     public EndEpisodeHandler OnEndEpisode;
     public delegate void StartEpisodeHandler();
     public StartEpisodeHandler OnStartEpisode;
-    public delegate void OnInitHandler();
-    public OnInitHandler OnInitializedEnv;
     [Header("Parameters")]
     public float EvacuationRate; // 全体の避難率
     public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
@@ -80,21 +80,14 @@ public class EnvManager : MonoBehaviour {
         if(AccSimulateScale > 1.0f) {
             Debug.LogError("AccSimulateScale is greater than 1.0f. Please set the value between 0.0f and 1.0f.");
         }
-        NavMesh.pathfindingIterationsPerFrame = 1000000;
+
+        NavMesh.pathfindingIterationsPerFrame = 1000000; // パス検索の上限値を設定
 
         Agent = AgentObj.GetComponent<ShelterManagementAgent>();
         Evacuees = new List<GameObject>(); // 避難者のリストを初期化
         CurrentShelters = new List<GameObject>(); // 避難所のリストを初期化
         Shelters = new List<GameObject>(); // 避難所のリストを初期化
         currentStep = Agent.StepCount;
-
-        OnEndEpisode += (float evacuateRate) => {
-            currentTimeSec = 0;
-            //Dispose();
-            //エージェントに避難率と終了までにかかったステップ数に基づいて報酬を与える
-            Agent.SetReward(evacuateRate * 100);
-            Agent.EndEpisode();
-        };
 
         // 避難所登録
         Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
@@ -112,26 +105,34 @@ public class EnvManager : MonoBehaviour {
                 tower.NowAccCount = 0;
             }
         }
+
+        /** エピソード終了時の処理*/
+        OnEndEpisode += (float evacuateRate) => {
+            currentTimeSec = 0; // 時間をリセット
+            Agent.SetReward(evacuateRate * 100); // 避難完了率を報酬を設定
+            Agent.EndEpisode(); // エピソード終了
+        };
     }
 
     void OnDrawGizmos() {
         if(EvacSpawnMode == SpawnMode.Random) {
-            Gizmos.color = Color.red; // Gizmoの色を設定
+            Gizmos.color = Color.red;
             DrawWireCircle(spawnCenter, SpawnRadius);
         }
     }
 
     void FixedUpdate() {
         currentTimeSec += Time.deltaTime;
-        if (currentTimeSec >= MaxSeconds) {
-            OnEndEpisode?.Invoke(EvacuationRate);
-        }
         EvacuationRate = GetCurrentEvacueeRate();
         UpdateUI();
+        if (currentTimeSec >= MaxSeconds) { // 制限時間の判定
+            OnEndEpisode?.Invoke(EvacuationRate); // 制限時間を超えた場合、エピソード終了のイベントを発火
+        }
     }
 
     /// <summary>
-    /// エピソード開始時の処理
+    /// エピソード開始時の初期化処理
+    /// この関数はエージェントのイベント関数から参照されます 
     /// </summary>
     public void OnEpisodeBegin() {
         EnableEnv = false;
@@ -141,6 +142,11 @@ public class EnvManager : MonoBehaviour {
         EnableEnv = true;
     }
 
+    /// <summary>
+    /// 環境をリセット,破棄をする関数。
+    /// - 避難者のクリア
+    /// - 避難所のクリア
+    /// </summary>
     public void Dispose() {
         foreach (var evacuee in Evacuees) {
             Destroy(evacuee);
@@ -149,7 +155,10 @@ public class EnvManager : MonoBehaviour {
         CurrentShelters = new List<GameObject>(); // 新しいリストを作成
     }
 
-
+    /// <summary>
+    /// 環境の生成を行う関数.
+    /// - 避難者のスポーン 処理
+    /// </summary>
     public void Create() {
         // 避難者のスポーン
         if(EvacSpawnMode == SpawnMode.Custom) {
@@ -173,7 +182,10 @@ public class EnvManager : MonoBehaviour {
         }
     }
 
-
+    /// <summary>
+    /// 避難者１体を生成、登録する関数
+    /// </summary>
+    /// <param name="spawnPos"></param>
     private void SpawnEvacuee(Vector3 spawnPos) {
         GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity, transform);
         evacuee.tag = "Evacuee";
@@ -184,7 +196,7 @@ public class EnvManager : MonoBehaviour {
     /// 範囲内のナビメッシュ上の任意の座標を取得する。
     /// </summary>
     /// <returns>ランダムなナビメッシュ上の座標 or Vector3.zero</returns>
-    private Vector3 GetRandomPositionOnNavMesh(float radius, Vector3 center) {
+    private static Vector3 GetRandomPositionOnNavMesh(float radius, Vector3 center) {
         Vector3 randomDirection = Random.insideUnitSphere * radius; // 半径内のランダムな位置を取得
         randomDirection += center; // 中心位置を加算
         NavMeshHit hit;
@@ -198,7 +210,10 @@ public class EnvManager : MonoBehaviour {
         stepCounter.text = $"Remain Seconds : {MaxSeconds - currentTimeSec:F2}";
     }
 
-
+    /// <summary>
+    /// 現在の避難完了率を取得する
+    /// </summary>
+    /// <returns>現在の避難完了率: 0～1</returns>
     private float GetCurrentEvacueeRate() {
         int evacueeSize = Evacuees.Count;
         int evacuatedSize = 0;
@@ -215,7 +230,7 @@ public class EnvManager : MonoBehaviour {
     /// <summary>
     /// 避難者のランダムスポーン範囲を描画する
     /// </summary>
-    private void DrawWireCircle(Vector3 center, float radius, int segments = 36) {
+    private static void DrawWireCircle(Vector3 center, float radius, int segments = 36) {
         float angle = 0f;
         float angleStep = 360f / segments;
 
