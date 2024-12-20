@@ -9,19 +9,18 @@ using UnityEngine.AI;
 public class Evacuee : MonoBehaviour {
     
     [Header("Movement Target")]
-    public GameObject Target;
-    private NavMeshAgent NavAgent;
-    private EnvManager _env;
+    public GameObject Target; // 現在の移動目標
+    private NavMeshAgent NavAgent; // NavMeshAgentコンポーネント
+    private EnvManager _env; // ShelterEnvManagerの参照
     private bool isEvacuating = false; // 避難処理中のフラグ。当たり判定により発火するため、複数回避難処理が行われるのを防ぐためのフラグ
     private List<string> excludeTowers; //1度避難したタワーのUUIDを格納するリスト
     void Awake() {
         NavAgent = GetComponent<NavMeshAgent>();    
-        excludeTowers = new List<string>(); //初期化
+        excludeTowers = new List<string>(); 
 
         _env = GetComponentInParent<EnvManager>();
         _env.Agent.OnDidActioned += () => {
-            Debug.Log("OnDidActioned");
-            // 最短距離の避難所を探す
+            // エージェントが建物を選択したことを検知して最短距離の避難所を探す
             if(this != null && this.gameObject.activeSelf) {
                 List<GameObject> towers = SearchTowers();
                 if(towers.Count > 0) {
@@ -41,9 +40,18 @@ public class Evacuee : MonoBehaviour {
     /// <returns>localField内のTowerオブジェクトのリスト</returns>
     private List<GameObject> SearchTowers(List<string> excludeTowerUUIDs = null) {
         GameObject[] towers = GameObject.FindGameObjectsWithTag("Shelter");
+        GameObject[] constShelters = GameObject.FindGameObjectsWithTag("ConstShelter");
+        List<GameObject> Iterates = new List<GameObject>();
+        foreach (var shelter in towers) {
+            Iterates.Add(shelter);
+        }
+        foreach (var shelter in constShelters) {
+            Iterates.Add(shelter);
+        }
+
         List<GameObject> sortedTowerPoints = new List<GameObject>();
-        foreach (var tower in towers) {
-            if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Tower>().uuid)) {
+        foreach (var tower in Iterates) {
+            if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Shelter>().uuid)) {
                 continue;
             }
             GameObject point = tower.transform.GetChild(0).gameObject;
@@ -59,7 +67,7 @@ public class Evacuee : MonoBehaviour {
     /// <summary>
     /// 避難を行う
     /// </summary>
-    public void Evacuation(Tower tower) {
+    public void Evacuation(Shelter tower) {
         if(isEvacuating) {
             return;
         }
