@@ -7,7 +7,7 @@ param(
 )
 
 $configurePath = "PLATEAUTutorial/Assets/Config/Tutorial-$mode.yaml"
-$exePath = ""
+$exePath = "PLATEAUTutorial/build/PLATEAUTutorial.exe"
 
 if($exe) {
     if($force) {

@@ -9,14 +9,14 @@ using UnityEngine.AI;
 public class Evacuee : MonoBehaviour {
     
     [Header("Movement Target")]
-    public GameObject Target;
-    private NavMeshAgent NavAgent;
-    private EnvManager _env;
+    public GameObject Target; // 現在の移動目標
+    private NavMeshAgent NavAgent; // NavMeshAgentコンポーネント
+    private EnvManager _env; // ShelterEnvManagerの参照
     private bool isEvacuating = false; // 避難処理中のフラグ。当たり判定により発火するため、複数回避難処理が行われるのを防ぐためのフラグ
     private List<string> excludeTowers; //1度避難したタワーのUUIDを格納するリスト
     void Awake() {
         NavAgent = GetComponent<NavMeshAgent>();    
-        excludeTowers = new List<string>(); //初期化
+        excludeTowers = new List<string>(); 
 
         _env = GetComponentInParent<EnvManager>();
         _env.Agent.OnDidActioned += () => {
