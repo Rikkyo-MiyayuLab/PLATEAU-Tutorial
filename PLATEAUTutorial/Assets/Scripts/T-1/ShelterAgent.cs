@@ -41,7 +41,7 @@ public class ShelterManagementAgent : Agent {
     public override void CollectObservations(VectorSensor sensor) {
 
         foreach(GameObject shelter in ShelterCandidates) {
-            Debug.Log("ShelterPos?" + shelter.transform.GetChild(0).gameObject.transform.position);
+            //Debug.Log("ShelterPos?" + shelter.transform.GetChild(0).gameObject.transform.position);
             sensor.AddObservation(shelter.transform.GetChild(0).gameObject.transform.position);
             sensor.AddObservation(shelter.GetComponent<Shelter>().currentCapacity);
         }

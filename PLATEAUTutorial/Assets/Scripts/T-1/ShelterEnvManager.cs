@@ -60,6 +60,7 @@ public class EnvManager : MonoBehaviour {
 
     [Header("UI Elements")]
     public TextMeshProUGUI stepCounter;
+    public TextMeshProUGUI evacRateCounter;
 
     // Event Listeners
     public delegate void EndEpisodeHandler(float evacueeRate);
@@ -108,9 +109,38 @@ public class EnvManager : MonoBehaviour {
 
         /** エピソード終了時の処理*/
         OnEndEpisode += (float evacuateRate) => {
-            currentTimeSec = 0; // 時間をリセット
-            Agent.SetReward(evacuateRate * 100); // 避難完了率を報酬を設定
-            Agent.EndEpisode(); // エピソード終了
+            currentTimeSec = 0;
+
+            // 1. 避難率による報酬
+            float evacuationRateReward = GetCurrentEvacueeRate() * 100;
+
+            // 2. 混雑ペナルティ
+            float congestionPenalty = 0;
+            foreach (var shelter in CurrentShelters) {
+                Shelter shelterComponent = shelter.GetComponent<Shelter>();
+                float excess = Mathf.Max(0, shelterComponent.NowAccCount - shelterComponent.MaxCapacity);
+                congestionPenalty += excess * 10f; // 1人超過ごとにペナルティ
+            }
+
+            // 3. 避難完了速度ボーナス
+            float speedBonus = (MaxSeconds - currentTimeSec) / MaxSeconds * 50;
+
+            // 4. 移動距離ペナルティ
+            float distancePenalty = 0;
+            foreach (var evacuee in Evacuees) {
+                if (evacuee.TryGetComponent(out NavMeshAgent agent)) {
+                    // アクティブな避難者のみを対象にする
+                    if (evacuee.activeSelf && agent.remainingDistance != Mathf.Infinity) {
+                        distancePenalty += agent.remainingDistance * 0.5f; // 距離ごとにペナルティ
+                    }
+                }
+            }
+
+            // 総合報酬
+            float totalReward = evacuationRateReward - congestionPenalty + speedBonus - distancePenalty;
+            Debug.Log("Total Reward: " + totalReward);
+            Agent.SetReward(totalReward);
+            Agent.EndEpisode();
         };
     }
 
@@ -160,23 +190,47 @@ public class EnvManager : MonoBehaviour {
     /// - 避難者のスポーン 処理
     /// </summary>
     public void Create() {
-        // 避難者のスポーン
-        if(EvacSpawnMode == SpawnMode.Custom) {
-            GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
-            foreach (var spawnPoint in spawnPoints) {
-                var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+
+        if(Mode == SimulateMode.Train) {
+            if(EvacSpawnMode == SpawnMode.Custom) {
+                // Custom Spawnエリアの中からランダムに1つ選択し、避難者をスポーンさせ、避難者位置に分布を持たせる
+                GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+                GameObject selectSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+                var point = selectSpawnPoint.GetComponent<EvacueeSpawnPoint>();
                 float radius = point.SpawnRadius;
-                Vector3 spawnCenter = spawnPoint.transform.position;
+                Vector3 spawnCenter = selectSpawnPoint.transform.position;
                 Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
-                for (int i = 0; i < point.SpawnSize; i++) {
+                for (int i = 0; i < SpawnEvacueeSize; i++) {
                     SpawnEvacuee(spawnPos);
                 }
+            } else {
+                for (int i = 0; i < SpawnEvacueeSize; i++) {
+                    Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
+                    if (spawnPos != Vector3.zero) {
+                        SpawnEvacuee(spawnPos);
+                    }
+                }
             }
-        } else {
-            for (int i = 0; i < SpawnEvacueeSize; i++) {
-                Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
-                if (spawnPos != Vector3.zero) {
-                    SpawnEvacuee(spawnPos);
+            
+
+        } else if(Mode == SimulateMode.Inference) {
+            if(EvacSpawnMode == SpawnMode.Custom) {
+                GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+                foreach (var spawnPoint in spawnPoints) {
+                    var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+                    float radius = point.SpawnRadius;
+                    Vector3 spawnCenter = spawnPoint.transform.position;
+                    Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
+                    for (int i = 0; i < point.SpawnSize; i++) {
+                        SpawnEvacuee(spawnPos);
+                    }
+                }
+            } else {
+                for (int i = 0; i < SpawnEvacueeSize; i++) {
+                    Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
+                    if (spawnPos != Vector3.zero) {
+                        SpawnEvacuee(spawnPos);
+                    }
                 }
             }
         }
@@ -208,6 +262,7 @@ public class EnvManager : MonoBehaviour {
 
     private void UpdateUI() {
         stepCounter.text = $"Remain Seconds : {MaxSeconds - currentTimeSec:F2}";
+        evacRateCounter.text = $"Evacuation Rate : {EvacuationRate:F2}";
     }
 
     /// <summary>

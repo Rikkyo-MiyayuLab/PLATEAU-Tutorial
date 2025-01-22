@@ -37,9 +37,9 @@ public class Shelter : MonoBehaviour{
 
     void OnTriggerEnter(Collider other) {
         
-        Debug.Log("OnTriggerEnter Tower");
+        //Debug.Log("OnTriggerEnter Tower");
         bool isEvacuee = other.CompareTag("Evacuee");
-        Debug.Log("isEvacuee?" + isEvacuee);
+        //Debug.Log("isEvacuee?" + isEvacuee);
         if (isEvacuee) {
             Evacuee evacuee = other.GetComponent<Evacuee>();
             evacuee.Evacuation(this);
