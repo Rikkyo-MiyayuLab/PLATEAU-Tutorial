@@ -17,8 +17,11 @@ public class ShelterManagementAgent : Agent {
 
     void Start() {
         _env = GetComponentInParent<EnvManager>();
+        Academy.Instance.AutomaticSteppingEnabled = true;
     }
+
     public override void Initialize() {
+        Time.timeScale = 100f;
         if(ShelterCandidates.Length == 0) {
             //Debug.LogError("No shelter candidates");
             // NOTE: 予め候補地は事前に設定させておくこと
