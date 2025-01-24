@@ -2,18 +2,18 @@ behaviors:
   ShelterSelect:
     trainer_type: ppo
     hyperparameters:
-      batch_size: 1024
+      batch_size: 3024
       buffer_size: 12000
-      learning_rate: 0.0001
-      beta: 0.01
-      epsilon: 0.3
+      learning_rate: 0.0003
+      beta: 0.001
+      epsilon: 0.2
       lambd: 0.99
       num_epoch: 5
       learning_rate_schedule: linear
     network_settings:
       normalize: false
-      hidden_units: 240
-      num_layers: 2
+      hidden_units: 666
+      num_layers: 4
       vis_encode_type: simple
     reward_signals:
       extrinsic:
