@@ -1,4 +1,4 @@
-/**必要な名前空間の参照*/
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -27,6 +27,7 @@ public class EnvManager : MonoBehaviour {
     public SimulateMode Mode = SimulateMode.Train; 
     public SpawnMode EvacSpawnMode = SpawnMode.Random; 
     public float TimeScale = 1.0f; // 推論時のシミュレーションの時間スケール
+    public bool IsRecordData = false;
     /// <summary>
     /// 生成する避難者の人数に合わせて避難所の収容人数をスケーリングします.
     /// </summary>
@@ -72,7 +73,9 @@ public class EnvManager : MonoBehaviour {
     public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
     private int currentStep;
     private float currentTimeSec;
-
+    private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
+    private int currentEpisodeId = 0;
+    private string recordID;
     void Start() {
         if(Mode == SimulateMode.Inference) {
             Time.timeScale = TimeScale; // 推論時のみシミュレーションの時間スケールを設定
@@ -81,6 +84,8 @@ public class EnvManager : MonoBehaviour {
         if(AccSimulateScale > 1.0f) {
             Debug.LogError("AccSimulateScale is greater than 1.0f. Please set the value between 0.0f and 1.0f.");
         }
+        // 日付-時間-分-秒を組み合わせた記録用IDを生成
+        recordID = System.DateTime.Now.ToString("yyyy_MM_dd-HH_mm_ss");
 
         NavMesh.pathfindingIterationsPerFrame = 1000000; // パス検索の上限値を設定
 
@@ -108,39 +113,7 @@ public class EnvManager : MonoBehaviour {
         }
 
         /** エピソード終了時の処理*/
-        OnEndEpisode += (float evacuateRate) => {
-
-            // 1. 避難率による報酬
-            float evacuationRateReward = GetCurrentEvacueeRate() * 100;
-            /*
-            // 2. 混雑ペナルティ
-            float congestionPenalty = 0;
-            foreach (var shelter in CurrentShelters) {
-                Shelter shelterComponent = shelter.GetComponent<Shelter>();
-                float excess = Mathf.Max(0, shelterComponent.NowAccCount - shelterComponent.MaxCapacity);
-                congestionPenalty += excess * 10f; // 1人超過ごとにペナルティ
-            }
-
-            // 3. 避難完了速度ボーナス
-            float speedBonus = (MaxSeconds - currentTimeSec) / MaxSeconds * 50;
-
-            // 4. 移動距離ペナルティ
-            float distancePenalty = 0;
-            foreach (var evacuee in Evacuees) {
-                if (evacuee.TryGetComponent(out NavMeshAgent agent)) {
-                    // アクティブな避難者のみを対象にする
-                    if (evacuee.activeSelf && agent.remainingDistance != Mathf.Infinity) {
-                        distancePenalty += agent.remainingDistance * 0.5f; // 距離ごとにペナルティ
-                    }
-                }
-            }
-            */
-            // 総合報酬
-            float totalReward = evacuationRateReward;
-            Debug.Log("Total Reward: " + totalReward);
-            Agent.SetReward(totalReward);
-            Agent.EndEpisode();
-        };
+        OnEndEpisode += OnEndEpisodeHandler;
     }
 
     void OnDrawGizmos() {
@@ -153,10 +126,54 @@ public class EnvManager : MonoBehaviour {
     void FixedUpdate() {
         currentTimeSec += Time.deltaTime;
         EvacuationRate = GetCurrentEvacueeRate();
+        evaRatePerSec.Add(new Tuple<float, float>(currentTimeSec, EvacuationRate));
         UpdateUI();
         if (currentTimeSec >= MaxSeconds || IsEvacuatedAll()) { // 制限時間 or 全避難者が避難完了した場合
             OnEndEpisode?.Invoke(EvacuationRate); // 制限時間を超えた場合、エピソード終了のイベントを発火
         }
+    }
+
+    private void OnEndEpisodeHandler(float evacuateRate) {
+        // 1. 避難率による報酬
+        float evacuationRateReward = GetCurrentEvacueeRate() * 100;
+        /*
+        // 2. 混雑ペナルティ
+        float congestionPenalty = 0;
+        foreach (var shelter in CurrentShelters) {
+            Shelter shelterComponent = shelter.GetComponent<Shelter>();
+            float excess = Mathf.Max(0, shelterComponent.NowAccCount - shelterComponent.MaxCapacity);
+            congestionPenalty += excess * 10f; // 1人超過ごとにペナルティ
+        }
+
+        // 3. 避難完了速度ボーナス
+        float speedBonus = (MaxSeconds - currentTimeSec) / MaxSeconds * 50;
+
+        // 4. 移動距離ペナルティ
+        float distancePenalty = 0;
+        foreach (var evacuee in Evacuees) {
+            if (evacuee.TryGetComponent(out NavMeshAgent agent)) {
+                // アクティブな避難者のみを対象にする
+                if (evacuee.activeSelf && agent.remainingDistance != Mathf.Infinity) {
+                    distancePenalty += agent.remainingDistance * 0.5f; // 距離ごとにペナルティ
+                }
+            }
+        }
+        */
+        // 総合報酬
+        float totalReward = evacuationRateReward;
+        Debug.Log("Total Reward: " + totalReward);
+        Agent.SetReward(totalReward);
+
+        if(IsRecordData) {
+            Utils.SaveResultCSV(
+                new string[] { "Time", "EvacuationRate" }, 
+                evaRatePerSec, 
+                (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() },
+                $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
+            );
+        }
+        Agent.EndEpisode();
+        currentEpisodeId++;
     }
 
     /// <summary>
@@ -189,6 +206,7 @@ public class EnvManager : MonoBehaviour {
         Evacuees = new List<GameObject>(); // 新しいリストを作成
         CurrentShelters = new List<GameObject>(); // 新しいリストを作成
         currentTimeSec = 0;
+        evaRatePerSec.Clear();
     }
 
     /// <summary>
@@ -201,7 +219,7 @@ public class EnvManager : MonoBehaviour {
             if(EvacSpawnMode == SpawnMode.Custom) {
                 // Custom Spawnエリアの中からランダムに1つ選択し、避難者をスポーンさせ、避難者位置に分布を持たせる
                 GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
-                GameObject selectSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
+                GameObject selectSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
                 var point = selectSpawnPoint.GetComponent<EvacueeSpawnPoint>();
                 point.ShowRangeOn();
                 float radius = point.SpawnRadius;
@@ -258,7 +276,7 @@ public class EnvManager : MonoBehaviour {
     /// </summary>
     /// <returns>ランダムなナビメッシュ上の座標 or Vector3.zero</returns>
     private static Vector3 GetRandomPositionOnNavMesh(float radius, Vector3 center) {
-        Vector3 randomDirection = Random.insideUnitSphere * radius; // 半径内のランダムな位置を取得
+        Vector3 randomDirection = UnityEngine.Random.insideUnitSphere * radius; // 半径内のランダムな位置を取得
         randomDirection += center; // 中心位置を加算
         NavMeshHit hit;
         if (NavMesh.SamplePosition(randomDirection, out hit, radius, NavMesh.AllAreas)) {

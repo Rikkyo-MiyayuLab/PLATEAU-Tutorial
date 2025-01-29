@@ -78,7 +78,6 @@ public class Evacuee : MonoBehaviour {
         } else { //キャパシティがいっぱいの場合、次のタワーを探す
             excludeTowers.Add(tower.uuid);
             List<GameObject> towers = SearchTowers(excludeTowers);
-            Debug.Log("TowersCount" + towers.Count);
             if(towers.Count > 0) {
                 Target = towers[0]; //最短距離のタワーを目標に設定
                 NavAgent.SetDestination(Target.transform.position);
