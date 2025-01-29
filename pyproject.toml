@@ -6,9 +6,7 @@ authors = [
     { name = "tsyu12345", email = "syukut@gmail.com" }
 ]
 dependencies = [
-    "mlagents>=1.0.0",
-    "torch==2.4.1+cu118",
-    "torchvision==0.19.1+cu118",
+    "torch==2.2.1",
 ]
 readme = "README.md"
 requires-python = ">= 3.10"
