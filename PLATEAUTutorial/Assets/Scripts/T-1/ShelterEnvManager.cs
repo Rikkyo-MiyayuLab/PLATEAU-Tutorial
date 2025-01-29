@@ -135,7 +135,10 @@ public class EnvManager : MonoBehaviour {
 
     private void OnEndEpisodeHandler(float evacuateRate) {
         // 1. 避難率による報酬
-        float evacuationRateReward = GetCurrentEvacueeRate() * 100;
+        float evacuationRateReward = GetCurrentEvacueeRate();
+
+        // 2. 経過時間によりボーナスを与える
+        float timeBonus = (MaxSeconds - currentTimeSec) / MaxSeconds;
         /*
         // 2. 混雑ペナルティ
         float congestionPenalty = 0;
@@ -160,9 +163,9 @@ public class EnvManager : MonoBehaviour {
         }
         */
         // 総合報酬
-        float totalReward = evacuationRateReward;
+        float totalReward = evacuationRateReward + timeBonus;
         Debug.Log("Total Reward: " + totalReward);
-        Agent.SetReward(totalReward);
+        Agent.AddReward(totalReward);
 
         if(IsRecordData) {
             Utils.SaveResultCSV(
