@@ -73,6 +73,7 @@ crashlytics-build.properties
 
 # My Custom ignores
 .venv
+.subvenv
 ml-agents
 results
 .venv-sub

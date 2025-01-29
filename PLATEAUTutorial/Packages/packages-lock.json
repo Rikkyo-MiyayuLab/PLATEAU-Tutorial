@@ -138,6 +138,15 @@
         "com.unity.modules.physics": "1.0.0"
       }
     },
+    "com.unity.ml-agents.extensions": {
+      "version": "file:../../ml-agents/com.unity.ml-agents.extensions",
+      "depth": 0,
+      "source": "local",
+      "dependencies": {
+        "com.unity.ml-agents": "3.0.0",
+        "com.unity.modules.physics": "1.0.0"
+      }
+    },
     "com.unity.nuget.mono-cecil": {
       "version": "1.11.4",
       "depth": 3,

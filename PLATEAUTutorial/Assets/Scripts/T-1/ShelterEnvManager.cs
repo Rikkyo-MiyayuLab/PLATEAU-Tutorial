@@ -109,11 +109,10 @@ public class EnvManager : MonoBehaviour {
 
         /** エピソード終了時の処理*/
         OnEndEpisode += (float evacuateRate) => {
-            currentTimeSec = 0;
 
             // 1. 避難率による報酬
             float evacuationRateReward = GetCurrentEvacueeRate() * 100;
-
+            /*
             // 2. 混雑ペナルティ
             float congestionPenalty = 0;
             foreach (var shelter in CurrentShelters) {
@@ -135,9 +134,9 @@ public class EnvManager : MonoBehaviour {
                     }
                 }
             }
-
+            */
             // 総合報酬
-            float totalReward = evacuationRateReward - congestionPenalty + speedBonus - distancePenalty;
+            float totalReward = evacuationRateReward;
             Debug.Log("Total Reward: " + totalReward);
             Agent.SetReward(totalReward);
             Agent.EndEpisode();
@@ -155,7 +154,7 @@ public class EnvManager : MonoBehaviour {
         currentTimeSec += Time.deltaTime;
         EvacuationRate = GetCurrentEvacueeRate();
         UpdateUI();
-        if (currentTimeSec >= MaxSeconds) { // 制限時間の判定
+        if (currentTimeSec >= MaxSeconds || IsEvacuatedAll()) { // 制限時間 or 全避難者が避難完了した場合
             OnEndEpisode?.Invoke(EvacuationRate); // 制限時間を超えた場合、エピソード終了のイベントを発火
         }
     }
@@ -181,8 +180,15 @@ public class EnvManager : MonoBehaviour {
         foreach (var evacuee in Evacuees) {
             Destroy(evacuee);
         }
+        // 避難者スポーン地点の表示を非表示にする
+        GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+        foreach (var spawnPoint in spawnPoints) {
+            var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+            point.ShowRangeOff();
+        }
         Evacuees = new List<GameObject>(); // 新しいリストを作成
         CurrentShelters = new List<GameObject>(); // 新しいリストを作成
+        currentTimeSec = 0;
     }
 
     /// <summary>
@@ -197,6 +203,7 @@ public class EnvManager : MonoBehaviour {
                 GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
                 GameObject selectSpawnPoint = spawnPoints[Random.Range(0, spawnPoints.Length)];
                 var point = selectSpawnPoint.GetComponent<EvacueeSpawnPoint>();
+                point.ShowRangeOn();
                 float radius = point.SpawnRadius;
                 Vector3 spawnCenter = selectSpawnPoint.transform.position;
                 Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
@@ -341,5 +348,15 @@ public class EnvManager : MonoBehaviour {
             // 収容可能人数＝総面積×0.8÷1.65㎡とする
             return (int)((totalFloorSize * 0.8 / 1.65) * AccSimulateScale);
         }
+    }
+
+
+    private bool IsEvacuatedAll() {
+        foreach (var evacuee in Evacuees) {
+            if (evacuee.activeSelf) {
+                return false;
+            }
+        }
+        return true;
     }
 }

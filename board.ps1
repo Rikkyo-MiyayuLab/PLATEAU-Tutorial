@@ -1,1 +1,1 @@
-tensorboard --logdir=./results
+tensorboard --logdir=PLATEAUTutorial/Assets/Models

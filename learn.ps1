@@ -7,7 +7,7 @@ param(
     [int]$port=5005
 )
 
-$configurePath = "PLATEAUTutorial/Assets/Config/Tutorial-$mode-SAC.yaml"
+$configurePath = "PLATEAUTutorial/Assets/Config/Tutorial-$mode.yaml"
 $exePath = "PLATEAUTutorial/build/PLATEAUTutorial.exe"
 
 if($exe) {

@@ -13,15 +13,19 @@ public class ShelterManagementAgent : Agent {
     public Material NonSelectMaterial;
     public Action OnDidActioned;
     private EnvManager _env;
+    EnvironmentParameters m_ResetParams;
+
 
 
     void Start() {
         _env = GetComponentInParent<EnvManager>();
-        Academy.Instance.AutomaticSteppingEnabled = true;
+        //Academy.Instance.AutomaticSteppingEnabled = true;
+
     }
 
     public override void Initialize() {
         Time.timeScale = 100f;
+        m_ResetParams = Academy.Instance.EnvironmentParameters;
         if(ShelterCandidates.Length == 0) {
             //Debug.LogError("No shelter candidates");
             // NOTE: 予め候補地は事前に設定させておくこと
@@ -87,6 +91,16 @@ public class ShelterManagementAgent : Agent {
             }
         }
         OnDidActioned?.Invoke();
+    }
+
+    /// <summary>
+    ///  ランダムに建物を選択
+    /// </summary>
+    public override void Heuristic(in ActionBuffers actionsOut) {
+        var Selects = actionsOut.DiscreteActions;
+        for(int i = 0; i < Selects.Length; i++) {
+            Selects[i] = UnityEngine.Random.Range(0, 2);
+        }
     }
 
 
