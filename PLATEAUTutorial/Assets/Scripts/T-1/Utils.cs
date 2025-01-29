@@ -1,3 +1,5 @@
+using System;
+using System.IO;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -21,6 +23,33 @@ public class Utils : MonoBehaviour {
 
             prevPoint = newPoint; // 次の線を描画するために現在の点を更新
         }
+    }
+
+
+    /// <summary> 汎用的なCSV保存関数 </summary>
+    public static void SaveResultCSV<T>(string[] header, List<T> dataList, Func<T, string[]> convertToCSVRow, string filePath = null, bool append = true) {
+
+        if (filePath == null) {
+            filePath = "result.csv";
+        }
+        // パスの先頭に指定パスを付与
+        filePath = Path.Combine(Application.dataPath, filePath);
+        // フォルダが存在しない場合は作成
+        string dir = Path.GetDirectoryName(filePath);
+        if (!Directory.Exists(dir)) {
+            Directory.CreateDirectory(dir);
+        }
+
+        bool writeHeader = !File.Exists(filePath) || !append;
+        using (StreamWriter writer = new StreamWriter(filePath, append)) {
+            if (writeHeader) writer.WriteLine(string.Join(",", header));
+
+            foreach (T data in dataList) {
+                string[] row = convertToCSVRow(data);
+                writer.WriteLine(string.Join(",", row));
+            }
+        }
+        Debug.Log($"CSV saved: {filePath}");
     }
 
 }

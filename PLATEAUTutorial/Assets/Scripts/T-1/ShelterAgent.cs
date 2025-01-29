@@ -33,6 +33,9 @@ public class ShelterManagementAgent : Agent {
         }
     }
 
+    /// <summary>
+    /// Agent.EndEpisode()後に呼ばれる
+    /// </summary>
     public override void OnEpisodeBegin() {
         _env.OnEpisodeBegin();
         Debug.Log("Episode begin");
