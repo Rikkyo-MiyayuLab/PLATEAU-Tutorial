@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System;
+using System.Linq;
 using UnityEngine;
 using Unity.MLAgents;
 using Unity.MLAgents.Actuators;
@@ -12,6 +13,7 @@ public class ShelterManagementAgent : Agent {
     public Material SelectedMaterial;
     public Material NonSelectMaterial;
     public Action OnDidActioned;
+    public List<Tuple<int, int, List<bool>>> ActionLogs = new List<Tuple<int, int, List<bool>>>(); // episode, step, 各避難所候補の選択状況のリスト(true or false)
     private EnvManager _env;
     EnvironmentParameters m_ResetParams;
 
@@ -37,8 +39,33 @@ public class ShelterManagementAgent : Agent {
     /// Agent.EndEpisode()後に呼ばれる
     /// </summary>
     public override void OnEpisodeBegin() {
-        _env.OnEpisodeBegin();
+        _env.OnStepBegin();
         Debug.Log("Episode begin");
+        RequestDecision();
+    }
+
+    public void OnEndEpisode() {
+        // データの保存とActionLogsの初期化
+        string[] shelterIds = new string[ShelterCandidates.Length];
+        for(int i = 0; i < ShelterCandidates.Length; i++) {
+            shelterIds[i] = ShelterCandidates[i].name;
+        }
+        string[] headers = new string[ShelterCandidates.Length + 2];
+        headers[0] = "Episode";
+        headers[1] = "Step";
+        Array.Copy(shelterIds, 0, headers, 2, shelterIds.Length);
+        Utils.SaveResultCSV(
+            headers,
+            ActionLogs,
+            (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() }.Concat(data.Item3.ConvertAll(x => x ? "1" : "0")).ToArray(),
+            $"{_env.recordID}/ActionLog_Episode_{_env.currentEpisodeId}.csv"
+        );
+        ActionLogs.Clear();
+    }
+
+    public void OnStepBegin() {
+        _env.OnStepBegin();
+        Debug.Log("begin step");
         RequestDecision();
     }
 
@@ -73,6 +100,7 @@ public class ShelterManagementAgent : Agent {
 
     public override void OnActionReceived(ActionBuffers actions) {
         var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序
+        List<bool> selectList = new List<bool>();
         if(Selects.Length != ShelterCandidates.Length) {
             Debug.LogError("Invalid action size : 避難所候補地のサイズとエージェントの選択サイズが不一致です");
             return;
@@ -85,14 +113,21 @@ public class ShelterManagementAgent : Agent {
                 _env.CurrentShelters.Add(Shelter);
                 Shelter.tag = "Shelter";
                 Shelter.GetComponent<MeshRenderer>().material = SelectedMaterial;
+                selectList.Add(true);
             } else if(select == 0) {
                 _env.CurrentShelters.Remove(Shelter);
                 Shelter.tag = "Untagged";
                 Shelter.GetComponent<MeshRenderer>().material = NonSelectMaterial;
+                selectList.Add(false);
             } else {
                 Debug.LogError("Invalid action");
             }
         }
+
+        // 行動ログを記録（episode, step, 各避難所候補の選択状況のリスト(true or false)）
+        ActionLogs.Add(new Tuple<int, int, List<bool>>(_env.currentEpisodeId, _env.currentStep, selectList));
+        
+
         OnDidActioned?.Invoke();
     }
 

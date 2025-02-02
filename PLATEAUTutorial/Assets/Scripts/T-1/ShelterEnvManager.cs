@@ -64,18 +64,20 @@ public class EnvManager : MonoBehaviour {
     public TextMeshProUGUI evacRateCounter;
 
     // Event Listeners
-    public delegate void EndEpisodeHandler(float evacueeRate);
-    public EndEpisodeHandler OnEndEpisode;
+    public delegate void EndStepHandler(float evacueeRate);
+    public EndStepHandler OnEndStep;
     public delegate void StartEpisodeHandler();
     public StartEpisodeHandler OnStartEpisode;
     [Header("Parameters")]
     public float EvacuationRate; // 全体の避難率
     public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
-    private int currentStep;
+    public int currentStep = 0;
+    public GameObject[] spawnPoints;
+    private int limitStep;
     private float currentTimeSec;
     private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
-    private int currentEpisodeId = 0;
-    private string recordID;
+    public int currentEpisodeId = 0;
+    public string recordID;
     void Start() {
         if(Mode == SimulateMode.Inference) {
             Time.timeScale = TimeScale; // 推論時のみシミュレーションの時間スケールを設定
@@ -93,7 +95,6 @@ public class EnvManager : MonoBehaviour {
         Evacuees = new List<GameObject>(); // 避難者のリストを初期化
         CurrentShelters = new List<GameObject>(); // 避難所のリストを初期化
         Shelters = new List<GameObject>(); // 避難所のリストを初期化
-        currentStep = Agent.StepCount;
 
         // 避難所登録
         Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
@@ -111,9 +112,11 @@ public class EnvManager : MonoBehaviour {
                 tower.NowAccCount = 0;
             }
         }
-
+        spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
         /** エピソード終了時の処理*/
-        OnEndEpisode += OnEndEpisodeHandler;
+        OnEndStep += OnEndStepHandler;
+
+        limitStep = GameObject.FindGameObjectsWithTag("SpawnPos").Length;
     }
 
     void OnDrawGizmos() {
@@ -129,11 +132,11 @@ public class EnvManager : MonoBehaviour {
         evaRatePerSec.Add(new Tuple<float, float>(currentTimeSec, EvacuationRate));
         UpdateUI();
         if (currentTimeSec >= MaxSeconds || IsEvacuatedAll()) { // 制限時間 or 全避難者が避難完了した場合
-            OnEndEpisode?.Invoke(EvacuationRate); // 制限時間を超えた場合、エピソード終了のイベントを発火
+            OnEndStep?.Invoke(EvacuationRate); // 制限時間を超えた場合、エピソード終了のイベントを発火
         }
     }
 
-    private void OnEndEpisodeHandler(float evacuateRate) {
+    private void OnEndStepHandler(float evacuateRate) {
         // 1. 避難率による報酬
         float evacuationRateReward = GetCurrentEvacueeRate() * 100;
         /*
@@ -162,29 +165,40 @@ public class EnvManager : MonoBehaviour {
         // 総合報酬
         float totalReward = evacuationRateReward;
         Debug.Log("Total Reward: " + totalReward);
-        Agent.SetReward(totalReward);
+        Agent.AddReward(totalReward);
 
         if(IsRecordData) {
             Utils.SaveResultCSV(
-                new string[] { "Time", "EvacuationRate" }, 
+                new string[] { "Time", "EvacuationRate" , "Step"}, 
                 evaRatePerSec, 
-                (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() },
+                (data) => new string[] { data.Item1.ToString(), data.Item2.ToString(), currentStep.ToString() },
                 $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
             );
         }
-        Agent.EndEpisode();
-        currentEpisodeId++;
+
+        if(currentStep == limitStep - 1) {
+            Agent.OnEndEpisode();
+            currentEpisodeId++;
+            currentStep = 0;
+            
+            Agent.EndEpisode();
+        } else {
+            currentStep++;
+
+            Agent.OnStepBegin();
+        }
+        
     }
 
     /// <summary>
     /// エピソード開始時の初期化処理
     /// この関数はエージェントのイベント関数から参照されます 
     /// </summary>
-    public void OnEpisodeBegin() {
+    public void OnStepBegin() {
         EnableEnv = false;
         Dispose();
         Create();
-        OnStartEpisode?.Invoke();
+        //OnStartEpisode?.Invoke();
         EnableEnv = true;
     }
 
@@ -217,9 +231,8 @@ public class EnvManager : MonoBehaviour {
 
         if(Mode == SimulateMode.Train) {
             if(EvacSpawnMode == SpawnMode.Custom) {
-                // Custom Spawnエリアの中からランダムに1つ選択し、避難者をスポーンさせ、避難者位置に分布を持たせる
-                GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
-                GameObject selectSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
+                // Custom Spawnエリアの中から順番に1つ選択し、避難者をスポーンさせ、避難者位置に分布を持たせる
+                GameObject selectSpawnPoint = spawnPoints[currentStep];
                 var point = selectSpawnPoint.GetComponent<EvacueeSpawnPoint>();
                 point.ShowRangeOn();
                 float radius = point.SpawnRadius;

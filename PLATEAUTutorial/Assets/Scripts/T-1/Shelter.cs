@@ -20,10 +20,9 @@ public class Shelter : MonoBehaviour{
     public AcceptRejected onRejected;
 
     private EnvManager _env;
-
     void Start() {
         _env = GetComponentInParent<EnvManager>();
-        _env.OnEndEpisode += (float _) => {
+        _env.OnEndStep += (float _) => {
             NowAccCount = 0;
         };
     }
