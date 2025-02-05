@@ -71,11 +71,11 @@ public class EnvManager : MonoBehaviour {
     [Header("Parameters")]
     public float EvacuationRate; // 全体の避難率
     public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
-    private int currentStep;
+    public int currentStep;
     private float currentTimeSec;
     private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
-    private int currentEpisodeId = 0;
-    private string recordID;
+    public int currentEpisodeId = 0;
+    public string recordID;
     void Start() {
         if(Mode == SimulateMode.Inference) {
             Time.timeScale = TimeScale; // 推論時のみシミュレーションの時間スケールを設定
