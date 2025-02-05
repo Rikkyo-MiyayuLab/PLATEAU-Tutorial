@@ -1,7 +1,14 @@
 # チュートリアル① モデル分析
 
 ## 目次
-
+- [学習過程の分析](#学習過程の分析)
+    - [累積報酬の推移](#累積報酬の推移)
+- [モデルの評価](#モデルの評価)
+    - [データ記録用の処理の作成](#データ記録用の処理の作成)
+    - [データ可視化用の処理の作成](#データ可視化用の処理の作成)
+    - [①避難率の比較](#①避難率の比較)
+    - [②モデルの行動分析（避難所選択回数の比較）](#②モデルの行動分析（避難所選択回数の比較）)
+- [結論](#結論)
 ## 学習過程の分析
 
 `Tensorboardコマンド`を使用して、訓練したモデルの学習過程を可視化することができます。
@@ -47,9 +54,350 @@ TensorBoard 2.18.0 at http://localhost:6006/ (Press CTRL+C to quit)
 今回作成したモデルをランダムに建物を選択する場合（モデル無し）と比較し、最終的な避難率の結果を確認しモデルの性能を評価してみましょう。
 
 ### データ記録用の処理の作成
-実装編で作成した、`シミュレーション環境制御プログラム`と`AI用プログラム`にそれぞれ以下の
+実装編で作成した、`シミュレーション環境制御プログラム`と`AI用プログラム`にそれぞれ以下のようにCSVデータとして記録する処理を実装していきます。
+
+<details>
+<summary>ＣＳＶ保存用関数</summary>
+
+```cs
+using System;
+using System.IO;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class Utils : MonoBehaviour {
+    ・・・
+    public static void SaveResultCSV<T>(string[] header, List<T> dataList, Func<T, string[]> convertToCSVRow, string filePath = null, bool append = true) {
+
+        if (filePath == null) {
+            filePath = "result.csv";
+        }
+        // パスの先頭に指定パスを付与
+        filePath = Path.Combine(Application.dataPath, filePath);
+        // フォルダが存在しない場合は作成
+        string dir = Path.GetDirectoryName(filePath);
+        if (!Directory.Exists(dir)) {
+            Directory.CreateDirectory(dir);
+        }
+
+        bool writeHeader = !File.Exists(filePath) || !append;
+        using (StreamWriter writer = new StreamWriter(filePath, append)) {
+            if (writeHeader) writer.WriteLine(string.Join(",", header));
+
+            foreach (T data in dataList) {
+                string[] row = convertToCSVRow(data);
+                writer.WriteLine(string.Join(",", row));
+            }
+        }
+        Debug.Log($"CSV saved: {filePath}");
+    }
+}
+```
+
+</details>
+
+
+<details>
+<summary>環境制御用：ShelterEnvManager.cs</summary>
+
+```cs
+public class EnvManager : MonoBehaviour {
+    ...
+    public float EvacuationRate; // 全体の避難率
+    public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
+    public int currentStep;
+    private float currentTimeSec;
+    private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
+    public int currentEpisodeId = 0;
+    public string recordID;
+    ・・・
+
+    void Start() {
+        ・・・
+         // 日付-時間-分-秒を組み合わせた記録用IDを生成
+        recordID = System.DateTime.Now.ToString("yyyy_MM_dd-HH_mm_ss");
+        ・・・
+    }
+
+    private void OnEndEpisodeHandler(float evacuateRate) {
+        ・・・
+        float totalReward = evacuationRateReward + timeBonus;
+        Debug.Log("Total Reward: " + totalReward);
+        Agent.AddReward(totalReward);
+
+        if(IsRecordData) {
+            Utils.SaveResultCSV(
+                new string[] { "Time", "EvacuationRate" }, 
+                evaRatePerSec, 
+                (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() },
+                $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
+            );
+        }
+        Agent.OnEndEpisode();
+
+        Agent.EndEpisode();
+        currentEpisodeId++;
+    }
+}
+```
+</details>
+<details>
+<summary>AIモデル用：ShelterAgent.cs</summary>
+
+```cs
+public class ShelterManagementAgent : Agent {
+    
+    public GameObject[] ShelterCandidates; //エージェントが操作する避難所の候補リスト
+    public Material SelectedMaterial;
+    public Material NonSelectMaterial;
+    public Action OnDidActioned;
+    public List<Tuple<int, int, List<bool>>> ActionLogs = new List<Tuple<int, int, List<bool>>>(); // episode, step, 各避難所候補の選択状況のリスト(true or false)
+    private EnvManager _env;
+    EnvironmentParameters m_ResetParams;
+
+    public void OnEndEpisode() {
+        // データの保存とActionLogsの初期化
+        string[] shelterIds = new string[ShelterCandidates.Length];
+        for(int i = 0; i < ShelterCandidates.Length; i++) {
+            shelterIds[i] = ShelterCandidates[i].name;
+        }
+        string[] headers = new string[ShelterCandidates.Length + 2];
+        headers[0] = "Episode";
+        headers[1] = "Step";
+        Array.Copy(shelterIds, 0, headers, 2, shelterIds.Length);
+        Utils.SaveResultCSV(
+            headers,
+            ActionLogs,
+            (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() }.Concat(data.Item3.ConvertAll(x => x ? "1" : "0")).ToArray(),
+            $"{_env.recordID}/ActionLog_Episode_{_env.currentEpisodeId}.csv"
+        );
+        ActionLogs.Clear();
+    }
+
+
+    public override void OnActionReceived(ActionBuffers actions) {
+        var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序
+        List<bool> selectList = new List<bool>();
+        if(Selects.Length != ShelterCandidates.Length) {
+            Debug.LogError("Invalid action size : 避難所候補地のサイズとエージェントの選択サイズが不一致です");
+            return;
+        }
+
+        for(int i = 0; i < Selects.Length; i++) {
+            int select = Selects[i]; // 0:非選択、1:選択
+            GameObject Shelter = ShelterCandidates[i];
+            if(select == 1) {
+                _env.CurrentShelters.Add(Shelter);
+                Shelter.tag = "Shelter";
+                Shelter.GetComponent<MeshRenderer>().material = SelectedMaterial;
+                selectList.Add(true);
+            } else if(select == 0) {
+                _env.CurrentShelters.Remove(Shelter);
+                Shelter.tag = "Untagged";
+                Shelter.GetComponent<MeshRenderer>().material = NonSelectMaterial;
+                selectList.Add(false);
+            } else {
+                Debug.LogError("Invalid action");
+            }
+        }
+
+        // 行動ログを記録（episode, step, 各避難所候補の選択状況のリスト(true or false)）
+        ActionLogs.Add(new Tuple<int, int, List<bool>>(_env.currentEpisodeId, _env.currentStep, selectList));
+        
+
+        OnDidActioned?.Invoke();
+    }
+}
+
+```
+</details>
 
 ### データ可視化用の処理の作成
+記録したCSVデータを各種グラフに可視化するためのPythonプログラムを実装していきます。
+<details>
+<summary>避難率推移の可視化</summary>
+
+```py
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+import pandas as pd
+import glob
+import re
+
+RANDOM_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-00_51_24-random"
+MODEL_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-01_34_46-model"
+
+def load_csv_data(folder_path, pattern):
+    """
+    指定されたフォルダからCSVファイルを読み込み、エピソード番号を抽出してデータフレームに追加します。
+    
+    Parameters:
+    folder_path (str): データが格納されているフォルダのパス
+    pattern (str): ファイル名のパターン（正規表現）
+    
+    Returns:
+    pd.DataFrame: 読み込んだデータを結合したデータフレーム
+    """
+    csv_paths = glob.glob(os.path.join(folder_path, "*.csv"))
+    dfs = []
+
+    for path in csv_paths:
+        match = re.search(pattern, path)
+        if match:
+            episode_num = int(match.group(1))
+            df = pd.read_csv(path)
+            print(f"Episode {episode_num} : {len(df)}")
+            df["episode"] = episode_num
+            dfs.append(df)
+
+    merged_df = pd.concat(dfs, ignore_index=True)
+    return merged_df
+
+# ランダム版のデータ読み込み
+RANDOM_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-00_51_24-random"
+random_pattern = r"EvaRatesPerSec_Episode_(\d+)"
+merged_random_df = load_csv_data(RANDOM_FOLDER_PATH, random_pattern)
+
+# モデル版のデータ読み込み
+MODEL_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-01_34_46-model2"
+model_pattern = r"EvaRatesPerSec_Episode_(\d+)"
+merged_model_df = load_csv_data(MODEL_FOLDER_PATH, model_pattern)
+
+# データフレームの表示
+merged_random_df, merged_model_df
+
+# エピソード番号でソート
+merged_random_df = merged_random_df.sort_values("episode")
+merged_model_df = merged_model_df.sort_values("episode")
+
+# 各時間ごとの避難率の平均、分散、標準偏差を計算
+evacuation_stats_random = merged_random_df.groupby('Time')['EvacuationRate'].agg(['mean', 'var', 'std']).reset_index()
+evacuation_stats_model = merged_model_df.groupby('Time')['EvacuationRate'].agg(['mean', 'var', 'std']).reset_index()
+
+# 平均値と標準偏差の範囲を計算
+evacuation_stats_random['lower'] = evacuation_stats_random['mean'] - evacuation_stats_random['std']
+evacuation_stats_random['upper'] = evacuation_stats_random['mean'] + evacuation_stats_random['std']
+evacuation_stats_model['lower'] = evacuation_stats_model['mean'] - evacuation_stats_model['std']
+evacuation_stats_model['upper'] = evacuation_stats_model['mean'] + evacuation_stats_model['std']
+
+# グラフを作成
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=evacuation_stats_random, x='Time', y='mean', label='Random Mean Evacuation Rate', color='blue')
+plt.fill_between(evacuation_stats_random['Time'], evacuation_stats_random['lower'], evacuation_stats_random['upper'], color='blue', alpha=0.2, label='Random Standard Deviation Range')
+sns.lineplot(data=evacuation_stats_model, x='Time', y='mean', label='Model Mean Evacuation Rate', color='red')
+plt.fill_between(evacuation_stats_model['Time'], evacuation_stats_model['lower'], evacuation_stats_model['upper'], color='red', alpha=0.2, label='Model Standard Deviation Range')
+plt.title('Average Evacuation Rate Over Time with Standard Deviation')
+plt.xlabel('Time')
+plt.ylabel('Evacuation Rate')
+plt.legend()
+
+# 最終的な避難率の最大値,平均値,分散,標準偏差をグラフ内に表示
+max_evacuation_rate_random = merged_random_df['EvacuationRate'].max()
+mean_evacuation_rate_random = merged_random_df['EvacuationRate'].mean()
+var_evacuation_rate_random = merged_random_df['EvacuationRate'].var()
+std_evacuation_rate_random = merged_random_df['EvacuationRate'].std()
+
+max_evacuation_rate_model = merged_model_df['EvacuationRate'].max()
+mean_evacuation_rate_model = merged_model_df['EvacuationRate'].mean()
+var_evacuation_rate_model = merged_model_df['EvacuationRate'].var()
+std_evacuation_rate_model = merged_model_df['EvacuationRate'].std()
+
+plt.text(0.1, 0.9, f'Random Max Evacuation Rate: {max_evacuation_rate_random:.2f}', transform=plt.gca().transAxes, color='blue')
+plt.text(0.1, 0.85, f'Random Mean Evacuation Rate: {mean_evacuation_rate_random:.2f}', transform=plt.gca().transAxes, color='blue')
+plt.text(0.1, 0.8, f'Random Variance Evacuation Rate: {var_evacuation_rate_random:.2f}', transform=plt.gca().transAxes, color='blue')
+plt.text(0.1, 0.75, f'Random Standard Deviation Evacuation Rate: {std_evacuation_rate_random:.2f}', transform=plt.gca().transAxes, color='blue')
+
+plt.text(0.1, 0.7, f'Model Max Evacuation Rate: {max_evacuation_rate_model:.2f}', transform=plt.gca().transAxes, color='red')
+plt.text(0.1, 0.65, f'Model Mean Evacuation Rate: {mean_evacuation_rate_model:.2f}', transform=plt.gca().transAxes, color='red')
+plt.text(0.1, 0.6, f'Model Variance Evacuation Rate: {var_evacuation_rate_model:.2f}', transform=plt.gca().transAxes, color='red')
+plt.text(0.1, 0.55, f'Model Standard Deviation Evacuation Rate: {std_evacuation_rate_model:.2f}', transform=plt.gca().transAxes, color='red')
+```
+
+</details>
+
+<details>
+<summary>建物選択回数の可視化</summary>
+
+```py
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+import os
+import pandas as pd
+import glob
+import re
+
+RANDOM_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-00_51_24-random"
+MODEL_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-01_34_46-model"
+
+def load_csv_data(folder_path, pattern):
+    """
+    指定されたフォルダからCSVファイルを読み込み、エピソード番号を抽出してデータフレームに追加します。
+    
+    Parameters:
+    folder_path (str): データが格納されているフォルダのパス
+    pattern (str): ファイル名のパターン（正規表現）
+    
+    Returns:
+    pd.DataFrame: 読み込んだデータを結合したデータフレーム
+    """
+    csv_paths = glob.glob(os.path.join(folder_path, "*.csv"))
+    dfs = []
+
+    for path in csv_paths:
+        match = re.search(pattern, path)
+        if match:
+            episode_num = int(match.group(1))
+            df = pd.read_csv(path)
+            print(f"Episode {episode_num} : {len(df)}")
+            df["episode"] = episode_num
+            dfs.append(df)
+
+    merged_df = pd.concat(dfs, ignore_index=True)
+    return merged_df
+
+
+# ランダム版のデータ読み込み
+RANDOM_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-00_51_24-random"
+random_pattern = r"ActionLog_Episode_(\d+)"
+random_action_merged_df = load_csv_data(RANDOM_FOLDER_PATH, random_pattern)
+
+# モデル版のデータ読み込み
+MODEL_FOLDER_PATH = "../../PLATEAUTutorial/Assets/2025_02_06-01_34_46-model2"
+model_pattern = r"ActionLog_Episode_(\d+)"
+model_action_merged_df = load_csv_data(MODEL_FOLDER_PATH, model_pattern)
+
+# エピソード番号でソート
+random_action_merged_df = random_action_merged_df.sort_values("episode")
+model_action_merged_df = model_action_merged_df.sort_values("episode")
+
+# 各建物の選択回数を計算
+random_counts = random_action_merged_df.drop(columns=['Episode', 'Step', 'episode', 'type']).sum().reset_index()
+random_counts.columns = ['Building', 'Random Selection Count']
+
+model_counts = model_action_merged_df.drop(columns=['Episode', 'Step', 'episode', 'type']).sum().reset_index()
+model_counts.columns = ['Building', 'Model Selection Count']
+
+# データフレームをマージして比較
+comparison_df = pd.merge(random_counts, model_counts, on='Building')
+
+# 可視化
+plt.figure(figsize=(14, 7))
+comparison_df.set_index('Building').plot(kind='bar', figsize=(14, 7))
+plt.title('Building Selection Count Comparison')
+plt.xlabel('Building')
+plt.ylabel('Selection Count')
+plt.xticks(rotation=90)
+plt.legend(title='Agent Type')
+plt.show()
+
+```
+
+</details>
+
 
 ### ①避難率の比較
 下図は、無作為にランダムに避難所を選択する場合（青）と、今回訓練したモデルによって避難所を選択させた時（赤）の経過時間あたりの避難率の推移のグラフです。
@@ -77,5 +425,12 @@ TensorBoard 2.18.0 at http://localhost:6006/ (Press CTRL+C to quit)
 また、シミュレーション全体を通じて、全く選択されていない建物, 回数が少ない建物が存在しています。このような建物は、全体の避難率向上には寄与しなかったとモデルが学習結果から判断しているもので、そのような建物は避難所として適していない可能性があります。
 
 このような分析は、実際の都市における避難計画を策定するときに役立つ可能性があります。
+
+
+# 結論
+モデルを適切に学習させることで、ランダム選択よりも効果的に避難所を選択し、全体の避難率を向上できる可能性が示唆されました。
+また、モデルの学習結果を分析することで、避難所として適切な建物を選定できることを示すことができました。
+
+今後さらにモデルのチューニングや、PLATEAUで利用可能な他の属性情報と組み合わせた分析を行う事で、より効果的な避難計画の策定に役立つ可能性があります。
 
 
