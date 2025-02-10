@@ -175,6 +175,8 @@ public class EnvManager : MonoBehaviour {
                 $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
             );
         }
+        Agent.OnEndEpisode();
+
         Agent.EndEpisode();
         currentEpisodeId++;
     }
