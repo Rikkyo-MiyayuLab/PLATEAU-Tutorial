@@ -32,8 +32,8 @@
 津波や洪水等の災害発生時において、最適な避難所の配置計画を作成することを目指します。避難時間や避難率の最適化を目標に、AIに都市モデル内でどの建物を避難所にすべきかを学習させ、動的に変化する避難者の配置分布から最適な避難所配置を導きます。
 
 # 作成環境
-- Unity 2022.3.4f1
-- ML-Agents toolkit Release 21
+- Unity 2023.2.19f1
+- ML-Agents toolkit Release 22
 - PLATEAU SDK for Unity 2.3.2
 - Windows 11
 
@@ -42,19 +42,19 @@
 Unityアカウントを作成し、Unity Hubをインストールします。
 [Unity Hub](https://unity.com/ja/download)のダウンロードページを開き、お使いのOSに合わせたバージョンをインストールしてください。
 
-Unity Hubインストール後、Unity Hubを起動し、`インストール`タブから`Unity 2022.3.4f1`をインストールします。
+Unity Hubインストール後、Unity Hubを起動し、`インストール`タブから`Unity 2023.2.19f1`をインストールします。
 ![alt text](../Common/EditorInstall.png)
 
-インストールが完了したら、`プロジェクト`タブから`新規`を選択し、`Unity 2022.3.4f1`を選択してプロジェクトを作成します。
+インストールが完了したら、`プロジェクト`タブから`新規`を選択し、`Unity 2023.2.19f1`を選択してプロジェクトを作成します。
 
 ## ML-Agentsのプロジェクトへの導入
 Unityのプロジェクトを作成したら、ML-Agentsをインストールします。
-インストールガイドは[こちら](https://github.com/Unity-Technologies/ml-agents/blob/develop/docs/Getting-Started.md)
+インストールガイドは[こちら](https://github.com/Unity-Technologies/ml-agents/blob/release_22/docs/Installation.md)
 
 <details>
 <summary>Unityパッケージの導入</summary>
 
-1. [リリースページ](https://github.com/Unity-Technologies/ml-agents/releases/tag/release_21)にアクセスし、`Source code(zip)`をダウンロードし、展開してください。
+1. [リリースページ](https://github.com/Unity-Technologies/ml-agents/releases/tag/release_22)にアクセスし、`Source code(zip)`をダウンロードし、展開してください。
 
 2. 作成したUnityプロジェクトを開き、メニューバーの`Window > PackageManager`を開き、上部 ＋ボタンから`Add packages from disk`を選択します。
 
@@ -75,7 +75,7 @@ Python環境並びにパッケージのインストール方法については�
 
 1. `mlagents`のインストール
 ```shell
-pip install mlagents==1.0.0
+pip install mlagents==1.1.0
 ```
 <details>
 <summary>GPUを使用した学習/推論を行いたい場合</summary>
@@ -86,7 +86,7 @@ GPU を使用した学習にはCUDAと対応するPytorchのインストール�
 
 1. CUDA版PyTorchのインストール
     ```shell
-    pip install torch==2.4.1+cu118 torchvision==0.19.1+cu118 --index-url https://download.pytorch.org/whl/cu118
+    pip install torch==2.1.1 torchvision==0.16.1 torchaudio==2.1.1 --index-url https://download.pytorch.org/whl/cu118
     ```
 2. CUDA Ver 11.8のインストール
     下記URLにアクセスし、インストーラー経由でインストールします。
@@ -382,6 +382,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
     using System.Collections;
     using System.Collections.Generic;
     using System;
+    using System.Linq;
     using UnityEngine;
     using Unity.MLAgents;
     using Unity.MLAgents.Actuators;
@@ -389,17 +390,25 @@ AIがシミュレーション中に避難所として指定できる建物の候
 
     public class ShelterManagementAgent : Agent {
         
-        public GameObject[] ShelterCandidates;
+        public GameObject[] ShelterCandidates; //エージェントが操作する避難所の候補リスト
         public Material SelectedMaterial;
         public Material NonSelectMaterial;
         public Action OnDidActioned;
+        public List<Tuple<int, int, List<bool>>> ActionLogs = new List<Tuple<int, int, List<bool>>>(); // episode, step, 各避難所候補の選択状況のリスト(true or false)
         private EnvManager _env;
+        EnvironmentParameters m_ResetParams;
+
 
 
         void Start() {
             _env = GetComponentInParent<EnvManager>();
+            //Academy.Instance.AutomaticSteppingEnabled = true;
+
         }
+
         public override void Initialize() {
+            Time.timeScale = 100f;
+            m_ResetParams = Academy.Instance.EnvironmentParameters;
             if(ShelterCandidates.Length == 0) {
                 //Debug.LogError("No shelter candidates");
                 // NOTE: 予め候補地は事前に設定させておくこと
@@ -407,10 +416,32 @@ AIがシミュレーション中に避難所として指定できる建物の候
             }
         }
 
+        /// <summary>
+        /// Agent.EndEpisode()後に呼ばれる
+        /// </summary>
         public override void OnEpisodeBegin() {
             _env.OnEpisodeBegin();
             Debug.Log("Episode begin");
             RequestDecision();
+        }
+
+        public void OnEndEpisode() {
+            // データの保存とActionLogsの初期化
+            string[] shelterIds = new string[ShelterCandidates.Length];
+            for(int i = 0; i < ShelterCandidates.Length; i++) {
+                shelterIds[i] = ShelterCandidates[i].name;
+            }
+            string[] headers = new string[ShelterCandidates.Length + 2];
+            headers[0] = "Episode";
+            headers[1] = "Step";
+            Array.Copy(shelterIds, 0, headers, 2, shelterIds.Length);
+            Utils.SaveResultCSV(
+                headers,
+                ActionLogs,
+                (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() }.Concat(data.Item3.ConvertAll(x => x ? "1" : "0")).ToArray(),
+                $"{_env.recordID}/ActionLog_Episode_{_env.currentEpisodeId}.csv"
+            );
+            ActionLogs.Clear();
         }
 
         /// <summary>
@@ -422,8 +453,9 @@ AIがシミュレーション中に避難所として指定できる建物の候
         public override void CollectObservations(VectorSensor sensor) {
 
             foreach(GameObject shelter in ShelterCandidates) {
+                //Debug.Log("ShelterPos?" + shelter.transform.GetChild(0).gameObject.transform.position);
                 sensor.AddObservation(shelter.transform.GetChild(0).gameObject.transform.position);
-                sensor.AddObservation(shelter.GetComponent<Tower>().currentCapacity);
+                sensor.AddObservation(shelter.GetComponent<Shelter>().currentCapacity);
             }
             // 観測のタイミングで避難者が避難してGameObjectが消えることがあるので、ここでコピーを作成
             List<GameObject> evacuees = new List<GameObject>(_env.Evacuees);
@@ -443,6 +475,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
 
         public override void OnActionReceived(ActionBuffers actions) {
             var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序
+            List<bool> selectList = new List<bool>();
             if(Selects.Length != ShelterCandidates.Length) {
                 Debug.LogError("Invalid action size : 避難所候補地のサイズとエージェントの選択サイズが不一致です");
                 return;
@@ -452,22 +485,40 @@ AIがシミュレーション中に避難所として指定できる建物の候
                 int select = Selects[i]; // 0:非選択、1:選択
                 GameObject Shelter = ShelterCandidates[i];
                 if(select == 1) {
-                    _env.Shelters.Add(Shelter);
+                    _env.CurrentShelters.Add(Shelter);
                     Shelter.tag = "Shelter";
                     Shelter.GetComponent<MeshRenderer>().material = SelectedMaterial;
+                    selectList.Add(true);
                 } else if(select == 0) {
-                    _env.Shelters.Remove(Shelter);
+                    _env.CurrentShelters.Remove(Shelter);
                     Shelter.tag = "Untagged";
                     Shelter.GetComponent<MeshRenderer>().material = NonSelectMaterial;
+                    selectList.Add(false);
                 } else {
                     Debug.LogError("Invalid action");
                 }
             }
+
+            // 行動ログを記録（episode, step, 各避難所候補の選択状況のリスト(true or false)）
+            ActionLogs.Add(new Tuple<int, int, List<bool>>(_env.currentEpisodeId, _env.currentStep, selectList));
+            
+
             OnDidActioned?.Invoke();
+        }
+
+        /// <summary>
+        ///  ランダムに建物を選択
+        /// </summary>
+        public override void Heuristic(in ActionBuffers actionsOut) {
+            var Selects = actionsOut.DiscreteActions;
+            for(int i = 0; i < Selects.Length; i++) {
+                Selects[i] = UnityEngine.Random.Range(0, 2);
+            }
         }
 
 
     }
+
 
   ```
   シーン内の`ShelterManagementAgent`オブジェクトにアタッチしてください。
@@ -529,8 +580,68 @@ AIがシミュレーション中に避難所として指定できる建物の候
 <details>
 <summary>シミュレーション環境制御プログラムの作成</summary>
 
+- `Utils.cs`
+    ```cs
+    using System;
+    using System.IO;
+    using System.Collections;
+    using System.Collections.Generic;
+    using UnityEngine;
+    public class Utils : MonoBehaviour {
+        
+        /// <summary>
+        /// 避難者のランダムスポーン範囲を描画する
+        /// </summary>
+        public static void DrawWireCircle(Vector3 center, float radius, int segments = 36) {
+            float angle = 0f;
+            float angleStep = 360f / segments;
+
+            Vector3 prevPoint = center + new Vector3(radius, 0, 0); // 初期点
+
+            for (int i = 1; i <= segments; i++) {
+                angle += angleStep;
+                float rad = Mathf.Deg2Rad * angle;
+
+                Vector3 newPoint = center + new Vector3(Mathf.Cos(rad) * radius, 0, Mathf.Sin(rad) * radius);
+                Gizmos.DrawLine(prevPoint, newPoint);
+
+                prevPoint = newPoint; // 次の線を描画するために現在の点を更新
+            }
+        }
+
+
+        /// <summary> 汎用的なCSV保存関数 </summary>
+        public static void SaveResultCSV<T>(string[] header, List<T> dataList, Func<T, string[]> convertToCSVRow, string filePath = null, bool append = true) {
+
+            if (filePath == null) {
+                filePath = "result.csv";
+            }
+            // パスの先頭に指定パスを付与
+            filePath = Path.Combine(Application.dataPath, filePath);
+            // フォルダが存在しない場合は作成
+            string dir = Path.GetDirectoryName(filePath);
+            if (!Directory.Exists(dir)) {
+                Directory.CreateDirectory(dir);
+            }
+
+            bool writeHeader = !File.Exists(filePath) || !append;
+            using (StreamWriter writer = new StreamWriter(filePath, append)) {
+                if (writeHeader) writer.WriteLine(string.Join(",", header));
+
+                foreach (T data in dataList) {
+                    string[] row = convertToCSVRow(data);
+                    writer.WriteLine(string.Join(",", row));
+                }
+            }
+            Debug.Log($"CSV saved: {filePath}");
+        }
+
+    }
+    ```
+
 - `ShelterEnvManager.cs`
     ```cs
+    using System;
     using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
@@ -544,20 +655,22 @@ AIがシミュレーション中に避難所として指定できる建物の候
     /// シミュレータ環境全般の制御を行うクラス
     /// </summary>
     public class EnvManager : MonoBehaviour {
+        /**シミュレーションモードの選択を定義*/
         public enum SimulateMode {
-            Train,
-            Inference
+            Train, // モデル訓練
+            Inference // モデル推論
         }
 
         public enum SpawnMode {
-            Random,
-            Custom,
+            Random, // 一定の範囲内でランダムに出現
+            Custom, // 自身でスポーン位置・範囲を設定
         }
 
         [Header("Environment Settings")]
-        public SimulateMode Mode = SimulateMode.Train; // 実行モード（Train or Inference）
-        public SpawnMode EvacSpawnMode = SpawnMode.Random; // 避難者のスポーンモード
-        public float TimeScale = 1.0f; // シミュレーションの時間スケール
+        public SimulateMode Mode = SimulateMode.Train; 
+        public SpawnMode EvacSpawnMode = SpawnMode.Random; 
+        public float TimeScale = 1.0f; // 推論時のシミュレーションの時間スケール
+        public bool IsRecordData = false;
         /// <summary>
         /// 生成する避難者の人数に合わせて避難所の収容人数をスケーリングします.
         /// </summary>
@@ -591,20 +704,21 @@ AIがシミュレーション中に避難所として指定できる建物の候
 
         [Header("UI Elements")]
         public TextMeshProUGUI stepCounter;
+        public TextMeshProUGUI evacRateCounter;
 
         // Event Listeners
         public delegate void EndEpisodeHandler(float evacueeRate);
         public EndEpisodeHandler OnEndEpisode;
         public delegate void StartEpisodeHandler();
         public StartEpisodeHandler OnStartEpisode;
-        public delegate void OnInitHandler();
-        public OnInitHandler OnInitializedEnv;
         [Header("Parameters")]
         public float EvacuationRate; // 全体の避難率
         public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
-        private int currentStep;
+        public int currentStep;
         private float currentTimeSec;
-
+        private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
+        public int currentEpisodeId = 0;
+        public string recordID;
         void Start() {
             if(Mode == SimulateMode.Inference) {
                 Time.timeScale = TimeScale; // 推論時のみシミュレーションの時間スケールを設定
@@ -613,21 +727,16 @@ AIがシミュレーション中に避難所として指定できる建物の候
             if(AccSimulateScale > 1.0f) {
                 Debug.LogError("AccSimulateScale is greater than 1.0f. Please set the value between 0.0f and 1.0f.");
             }
-            NavMesh.pathfindingIterationsPerFrame = 1000000;
+            // 日付-時間-分-秒を組み合わせた記録用IDを生成
+            recordID = System.DateTime.Now.ToString("yyyy_MM_dd-HH_mm_ss");
+
+            NavMesh.pathfindingIterationsPerFrame = 1000000; // パス検索の上限値を設定
 
             Agent = AgentObj.GetComponent<ShelterManagementAgent>();
             Evacuees = new List<GameObject>(); // 避難者のリストを初期化
             CurrentShelters = new List<GameObject>(); // 避難所のリストを初期化
             Shelters = new List<GameObject>(); // 避難所のリストを初期化
             currentStep = Agent.StepCount;
-
-            OnEndEpisode += (float evacuateRate) => {
-                currentTimeSec = 0;
-                //Dispose();
-                //エージェントに避難率と終了までにかかったステップ数に基づいて報酬を与える
-                Agent.SetReward(evacuateRate * 100);
-                Agent.EndEpisode();
-            };
 
             // 避難所登録
             Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
@@ -645,26 +754,57 @@ AIがシミュレーション中に避難所として指定できる建物の候
                     tower.NowAccCount = 0;
                 }
             }
+
+            /** エピソード終了時の処理*/
+            OnEndEpisode += OnEndEpisodeHandler;
         }
 
         void OnDrawGizmos() {
             if(EvacSpawnMode == SpawnMode.Random) {
-                Gizmos.color = Color.red; // Gizmoの色を設定
+                Gizmos.color = Color.red;
                 DrawWireCircle(spawnCenter, SpawnRadius);
             }
         }
 
         void FixedUpdate() {
             currentTimeSec += Time.deltaTime;
-            if (currentTimeSec >= MaxSeconds) {
-                OnEndEpisode?.Invoke(EvacuationRate);
-            }
             EvacuationRate = GetCurrentEvacueeRate();
+            evaRatePerSec.Add(new Tuple<float, float>(currentTimeSec, EvacuationRate));
             UpdateUI();
+            if (currentTimeSec >= MaxSeconds || IsEvacuatedAll()) { // 制限時間 or 全避難者が避難完了した場合
+                OnEndEpisode?.Invoke(EvacuationRate); // 制限時間を超えた場合、エピソード終了のイベントを発火
+            }
+        }
+
+        private void OnEndEpisodeHandler(float evacuateRate) {
+            // 1. 避難率による報酬
+            float evacuationRateReward = GetCurrentEvacueeRate();
+
+            // 2. 経過時間によりボーナスを与える
+            float timeBonus = (MaxSeconds - currentTimeSec) / MaxSeconds;
+
+            // 総合報酬
+            float totalReward = evacuationRateReward + timeBonus;
+            Debug.Log("Total Reward: " + totalReward);
+            Agent.AddReward(totalReward);
+
+            if(IsRecordData) {
+                Utils.SaveResultCSV(
+                    new string[] { "Time", "EvacuationRate" }, 
+                    evaRatePerSec, 
+                    (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() },
+                    $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
+                );
+            }
+            Agent.OnEndEpisode();
+
+            Agent.EndEpisode();
+            currentEpisodeId++;
         }
 
         /// <summary>
-        /// エピソード開始時の処理
+        /// エピソード開始時の初期化処理
+        /// この関数はエージェントのイベント関数から参照されます 
         /// </summary>
         public void OnEpisodeBegin() {
             EnableEnv = false;
@@ -674,39 +814,83 @@ AIがシミュレーション中に避難所として指定できる建物の候
             EnableEnv = true;
         }
 
+        /// <summary>
+        /// 環境をリセット,破棄をする関数。
+        /// - 避難者のクリア
+        /// - 避難所のクリア
+        /// </summary>
         public void Dispose() {
             foreach (var evacuee in Evacuees) {
                 Destroy(evacuee);
             }
+            // 避難者スポーン地点の表示を非表示にする
+            GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+            foreach (var spawnPoint in spawnPoints) {
+                var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+                point.ShowRangeOff();
+            }
             Evacuees = new List<GameObject>(); // 新しいリストを作成
             CurrentShelters = new List<GameObject>(); // 新しいリストを作成
+            currentTimeSec = 0;
+            evaRatePerSec.Clear();
         }
 
-
+        /// <summary>
+        /// 環境の生成を行う関数.
+        /// - 避難者のスポーン 処理
+        /// </summary>
         public void Create() {
-            // 避難者のスポーン
-            if(EvacSpawnMode == SpawnMode.Custom) {
-                GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
-                foreach (var spawnPoint in spawnPoints) {
-                    var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+
+            if(Mode == SimulateMode.Train) {
+                if(EvacSpawnMode == SpawnMode.Custom) {
+                    // Custom Spawnエリアの中からランダムに1つ選択し、避難者をスポーンさせ、避難者位置に分布を持たせる
+                    GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+                    GameObject selectSpawnPoint = spawnPoints[UnityEngine.Random.Range(0, spawnPoints.Length)];
+                    var point = selectSpawnPoint.GetComponent<EvacueeSpawnPoint>();
+                    point.ShowRangeOn();
                     float radius = point.SpawnRadius;
-                    Vector3 spawnCenter = spawnPoint.transform.position;
+                    Vector3 spawnCenter = selectSpawnPoint.transform.position;
                     Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
-                    for (int i = 0; i < point.SpawnSize; i++) {
+                    for (int i = 0; i < SpawnEvacueeSize; i++) {
                         SpawnEvacuee(spawnPos);
                     }
+                } else {
+                    for (int i = 0; i < SpawnEvacueeSize; i++) {
+                        Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
+                        if (spawnPos != Vector3.zero) {
+                            SpawnEvacuee(spawnPos);
+                        }
+                    }
                 }
-            } else {
-                for (int i = 0; i < SpawnEvacueeSize; i++) {
-                    Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
-                    if (spawnPos != Vector3.zero) {
-                        SpawnEvacuee(spawnPos);
+                
+
+            } else if(Mode == SimulateMode.Inference) {
+                if(EvacSpawnMode == SpawnMode.Custom) {
+                    GameObject[] spawnPoints = GameObject.FindGameObjectsWithTag("SpawnPos");
+                    foreach (var spawnPoint in spawnPoints) {
+                        var point = spawnPoint.GetComponent<EvacueeSpawnPoint>();
+                        float radius = point.SpawnRadius;
+                        Vector3 spawnCenter = spawnPoint.transform.position;
+                        Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
+                        for (int i = 0; i < point.SpawnSize; i++) {
+                            SpawnEvacuee(spawnPos);
+                        }
+                    }
+                } else {
+                    for (int i = 0; i < SpawnEvacueeSize; i++) {
+                        Vector3 spawnPos = GetRandomPositionOnNavMesh(SpawnRadius, spawnCenter);
+                        if (spawnPos != Vector3.zero) {
+                            SpawnEvacuee(spawnPos);
+                        }
                     }
                 }
             }
         }
 
-
+        /// <summary>
+        /// 避難者１体を生成、登録する関数
+        /// </summary>
+        /// <param name="spawnPos"></param>
         private void SpawnEvacuee(Vector3 spawnPos) {
             GameObject evacuee = Instantiate(SpawnEvacueePref, spawnPos, Quaternion.identity, transform);
             evacuee.tag = "Evacuee";
@@ -717,8 +901,8 @@ AIがシミュレーション中に避難所として指定できる建物の候
         /// 範囲内のナビメッシュ上の任意の座標を取得する。
         /// </summary>
         /// <returns>ランダムなナビメッシュ上の座標 or Vector3.zero</returns>
-        private Vector3 GetRandomPositionOnNavMesh(float radius, Vector3 center) {
-            Vector3 randomDirection = Random.insideUnitSphere * radius; // 半径内のランダムな位置を取得
+        private static Vector3 GetRandomPositionOnNavMesh(float radius, Vector3 center) {
+            Vector3 randomDirection = UnityEngine.Random.insideUnitSphere * radius; // 半径内のランダムな位置を取得
             randomDirection += center; // 中心位置を加算
             NavMeshHit hit;
             if (NavMesh.SamplePosition(randomDirection, out hit, radius, NavMesh.AllAreas)) {
@@ -729,9 +913,13 @@ AIがシミュレーション中に避難所として指定できる建物の候
 
         private void UpdateUI() {
             stepCounter.text = $"Remain Seconds : {MaxSeconds - currentTimeSec:F2}";
+            evacRateCounter.text = $"Evacuation Rate : {EvacuationRate:F2}";
         }
 
-
+        /// <summary>
+        /// 現在の避難完了率を取得する
+        /// </summary>
+        /// <returns>現在の避難完了率: 0～1</returns>
         private float GetCurrentEvacueeRate() {
             int evacueeSize = Evacuees.Count;
             int evacuatedSize = 0;
@@ -748,7 +936,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
         /// <summary>
         /// 避難者のランダムスポーン範囲を描画する
         /// </summary>
-        private void DrawWireCircle(Vector3 center, float radius, int segments = 36) {
+        private static void DrawWireCircle(Vector3 center, float radius, int segments = 36) {
             float angle = 0f;
             float angleStep = 360f / segments;
 
@@ -805,7 +993,18 @@ AIがシミュレーション中に避難所として指定できる建物の候
                 return (int)((totalFloorSize * 0.8 / 1.65) * AccSimulateScale);
             }
         }
+
+
+        private bool IsEvacuatedAll() {
+            foreach (var evacuee in Evacuees) {
+                if (evacuee.activeSelf) {
+                    return false;
+                }
+            }
+            return true;
+        }
     }
+
     ```
     作成後シーン内の`Field`オブジェクトにアタッチしてください。
 </details>
@@ -861,32 +1060,33 @@ yamlファイルを作成します。
 
 ```yaml
 behaviors:
-  ShelterSelect: # ここの名前が、ShelterManagementAgentのBehavior Nameと一致している必要があります
-    trainer_type: ppo # 使用するトレーナーの種類（ここではPPO: Proximal Policy Optimization）
+  ShelterSelect:
+    trainer_type: ppo # 使用するトレーナーの種類（ここではProximal Policy Optimization）
     hyperparameters:
-      batch_size: 64 # 学習に使用するデータのバッチサイズ（1回の更新に使うデータ数）
-      buffer_size: 12000 # バッファに保持する経験のサイズ（学習に使用するデータを一時保存する容量）
-      learning_rate: 0.0003 # ニューラルネットワークの学習率（重みを更新する際の速度）
-      beta: 0.001 # ポリシーエントロピーの正則化係数（探索の多様性を促進するために使用）
-      epsilon: 0.2 # PPOクリッピング範囲（ポリシー更新の安定性を確保するための制約）
-      lambd: 0.99 # GAE（Generalized Advantage Estimation）のλパラメータ（報酬の割引率に影響）
-      num_epoch: 3 # バッファから何回更新を行うか（1つのデータセットを何回使用するか）
-      learning_rate_schedule: linear # 学習率のスケジュール（線形に減少する設定）
+      batch_size: 512 # 一度にトレーニングするサンプルの数
+      buffer_size: 409600 # 経験バッファのサイズ
+      learning_rate: 1e-3 # 学習率
+      beta: 0.01 # エントロピー正則化の強さ
+      epsilon: 0.3 # クリッピング範囲のパラメータ
+      lambd: 0.99 # GAE（Generalized Advantage Estimation）のパラメータ
+      num_epoch: 5 # 各バッチのトレーニングエポック数
+      learning_rate_schedule: linear # 学習率のスケジュール（ここでは線形減衰）
     network_settings:
-      normalize: true # 入力データの正規化を行うか（trueの場合、データのスケールを揃える）
-      hidden_units: 128 # 各全結合レイヤーの隠れ層ユニット数（ニューラルネットワークの複雑さ）
-      num_layers: 2 # ニューラルネットワークのレイヤー数（深さを表す）
-      vis_encode_type: simple # 視覚観測用のエンコーダタイプ（ここでは簡易エンコーダ）
+      normalize: false # 入力データの正規化を行うかどうか
+      hidden_units: 512 # 各隠れ層のユニット数
+      num_layers: 3 # 隠れ層の数
+      vis_encode_type: simple # 視覚エンコーダのタイプ
     reward_signals:
-      extrinsic: # 環境からの報酬信号
-        gamma: 0.99 # 割引率（将来の報酬に対する現在の価値の重み）
-        strength: 1.0 # 報酬のスケール（報酬の相対的な大きさを調整）
-    keep_checkpoints: 5 # 保存するチェックポイントの最大数（学習の進行を保存）
-    max_steps: 500000 # 学習プロセス全体での最大ステップ数
-    time_horizon: 1000 # トレーニング時のタイムホライズン（エピソード内での最大ステップ数）
-    summary_freq: 10 # ログを記録する頻度（ステップ数に基づく）
-
+      extrinsic:
+        gamma: 0.80 # 割引率
+        strength: 1.0 # 報酬信号の強さ
+    keep_checkpoints: 5 # 保存するチェックポイントの数
+    max_steps: 500000 # トレーニングの最大ステップ数
+    time_horizon: 2048 # エージェントの時間的ホライゾン
+    summary_freq: 5 # サマリーを記録する頻度
 ```
+- 利用可能なパラメータの値については[公式ドキュメント](https://github.com/Unity-Technologies/ml-agents/blob/develop/docs/Training-Configuration-File.md)を参照してください。
+
 
 ## 7. 学習の実行と結果の確認
 
@@ -926,5 +1126,6 @@ tensorboard --logdir=./results
 
     エージェントはシミュレーション開始時に、都市内の避難者の分布や建物の収容人数を観測し、避難所の配置を決定します。その後、避難者が避難所に向かう様子を観察することができます。
 
-
+3. シミュレーション結果を分析する。
+    今回作成したAIモデルのシミュレーション結果の分析は、[「チュートリアル① モデル分析編」](https://github.com/Rikkyo-MiyayuLab/PLATEAU-Tutorial/tree/develop/docs/Tutorial-1-Inference)を参照してください。
 
