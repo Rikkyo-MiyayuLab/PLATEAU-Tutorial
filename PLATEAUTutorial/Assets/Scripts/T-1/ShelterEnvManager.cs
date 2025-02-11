@@ -139,29 +139,7 @@ public class EnvManager : MonoBehaviour {
 
         // 2. 経過時間によりボーナスを与える
         float timeBonus = (MaxSeconds - currentTimeSec) / MaxSeconds;
-        /*
-        // 2. 混雑ペナルティ
-        float congestionPenalty = 0;
-        foreach (var shelter in CurrentShelters) {
-            Shelter shelterComponent = shelter.GetComponent<Shelter>();
-            float excess = Mathf.Max(0, shelterComponent.NowAccCount - shelterComponent.MaxCapacity);
-            congestionPenalty += excess * 10f; // 1人超過ごとにペナルティ
-        }
 
-        // 3. 避難完了速度ボーナス
-        float speedBonus = (MaxSeconds - currentTimeSec) / MaxSeconds * 50;
-
-        // 4. 移動距離ペナルティ
-        float distancePenalty = 0;
-        foreach (var evacuee in Evacuees) {
-            if (evacuee.TryGetComponent(out NavMeshAgent agent)) {
-                // アクティブな避難者のみを対象にする
-                if (evacuee.activeSelf && agent.remainingDistance != Mathf.Infinity) {
-                    distancePenalty += agent.remainingDistance * 0.5f; // 距離ごとにペナルティ
-                }
-            }
-        }
-        */
         // 総合報酬
         float totalReward = evacuationRateReward + timeBonus;
         Debug.Log("Total Reward: " + totalReward);
