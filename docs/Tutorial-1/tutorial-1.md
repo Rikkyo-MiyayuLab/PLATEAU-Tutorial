@@ -1084,18 +1084,6 @@ behaviors:
     max_steps: 500000 # トレーニングの最大ステップ数
     time_horizon: 2048 # エージェントの時間的ホライゾン
     summary_freq: 5 # サマリーを記録する頻度
-environment_parameters:
-  mass:
-    sampler_type: uniform # サンプラーの種類（ここでは一様分布）
-    sampler_parameters:
-      min_value: 0.5 # サンプルの最小値
-      max_value: 10 # サンプルの最大値
-  scale:
-    sampler_type: uniform # サンプラーの種類（ここでは一様分布）
-    sampler_parameters:
-      min_value: 0.75 # サンプルの最小値
-      max_value: 3 # サンプルの最大値
-
 ```
 - 利用可能なパラメータの値については[公式ドキュメント](https://github.com/Unity-Technologies/ml-agents/blob/develop/docs/Training-Configuration-File.md)を参照してください。
 

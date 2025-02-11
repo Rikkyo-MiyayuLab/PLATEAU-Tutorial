@@ -23,14 +23,3 @@ behaviors:
     max_steps: 500000
     time_horizon: 2048
     summary_freq: 5
-environment_parameters:
-  mass:
-    sampler_type: uniform
-    sampler_parameters:
-      min_value: 0.5
-      max_value: 10
-  scale:
-    sampler_type: uniform
-    sampler_parameters:
-      min_value: 0.75
-      max_value: 3
