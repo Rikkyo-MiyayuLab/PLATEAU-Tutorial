@@ -14,11 +14,10 @@ public class ShelterManagementAgent : Agent {
     public Material NonSelectMaterial;
     public Action OnDidActioned;
     public List<Tuple<int, int, List<bool>>> ActionLogs = new List<Tuple<int, int, List<bool>>>(); // episode, step, 各避難所候補の選択状況のリスト(true or false)
+    public bool Disabled = false;
+    public List<GameObject> ConstBldgs;
     private EnvManager _env;
-    EnvironmentParameters m_ResetParams;
-
-
-
+    
     void Start() {
         _env = GetComponentInParent<EnvManager>();
         //Academy.Instance.AutomaticSteppingEnabled = true;
@@ -27,7 +26,6 @@ public class ShelterManagementAgent : Agent {
 
     public override void Initialize() {
         Time.timeScale = 100f;
-        m_ResetParams = Academy.Instance.EnvironmentParameters;
         if(ShelterCandidates.Length == 0) {
             //Debug.LogError("No shelter candidates");
             // NOTE: 予め候補地は事前に設定させておくこと
@@ -131,7 +129,12 @@ public class ShelterManagementAgent : Agent {
     public override void Heuristic(in ActionBuffers actionsOut) {
         var Selects = actionsOut.DiscreteActions;
         for(int i = 0; i < Selects.Length; i++) {
-            Selects[i] = UnityEngine.Random.Range(0, 2);
+            if(Disabled) {
+                // ShelterCandidatesの要素と検証用のConstBldgsの要素が一致する場合は1
+                Selects[i] = ConstBldgs.Contains(ShelterCandidates[i]) ? 1 : 0;
+            } else {
+                Selects[i] = UnityEngine.Random.Range(0, 2);
+            }
         }
     }
 

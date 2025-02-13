@@ -51,6 +51,7 @@ public class EnvManager : MonoBehaviour {
 
     public GameObject AgentObj;
     public ShelterManagementAgent Agent;
+    public bool IsDataCollectionMode;
 
     [Header("Objects")]
     [System.NonSerialized]
@@ -94,6 +95,10 @@ public class EnvManager : MonoBehaviour {
         CurrentShelters = new List<GameObject>(); // 避難所のリストを初期化
         Shelters = new List<GameObject>(); // 避難所のリストを初期化
         currentStep = Agent.StepCount;
+
+        if(IsDataCollectionMode) {
+            Agent.Disabled = true;
+        }
 
         // 避難所登録
         Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));

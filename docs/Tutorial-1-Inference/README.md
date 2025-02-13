@@ -1,13 +1,20 @@
 # チュートリアル① モデル分析編
 
 ## 目次
-- [学習過程の分析](#学習過程の分析)
-    - [累積報酬の推移](#累積報酬の推移)
-- [モデルの評価](#モデルの評価)
+- [チュートリアル① モデル分析編](#チュートリアル-モデル分析編)
+  - [目次](#目次)
+  - [学習過程の分析](#学習過程の分析)
+      - [累積報酬の推移](#累積報酬の推移)
+  - [モデルの評価](#モデルの評価)
     - [データ記録用の処理の作成](#データ記録用の処理の作成)
     - [データ可視化用の処理の作成](#データ可視化用の処理の作成)
-    - [①避難率の比較](#①避難率の比較)
-    - [②モデルの行動分析（避難所選択回数の比較）](#②モデルの行動分析（避難所選択回数の比較）)
+    - [①避難率の比較](#避難率の比較)
+    - [②モデルの行動分析（避難所選択回数の比較）](#モデルの行動分析避難所選択回数の比較)
+  - [上位２つの建物と下位２つの建物の比較](#上位２つの建物と下位２つの建物の比較)
+    - [上位２つの建物の位置](#上位２つの建物の位置)
+    - [下位２つの建物の位置](#下位２つの建物の位置)
+    - [収容人数の比較](#収容人数の比較)
+    - [上位２つの建物と下位２つの建物の避難率の比較](#上位２つの建物と下位２つの建物の避難率の比較)
 - [結論](#結論)
 ## 学習過程の分析
 
@@ -52,6 +59,10 @@ TensorBoard 2.18.0 at http://localhost:6006/ (Press CTRL+C to quit)
 ## モデルの評価
 
 今回作成したモデルをランダムに建物を選択する場合（モデル無し）と比較し、最終的な避難率の結果を確認しモデルの性能を評価してみましょう。
+
+![alt text](image-11.png)
+
+避難者はマップ上の赤点で示した地点（今回合計５か所任意に配置）を中心に、その道路上で生成され、シミュレーション開始と同時に避難行動を開始するものとします。
 
 ### データ記録用の処理の作成
 実装編で作成した、`シミュレーション環境制御プログラム`と`AI用プログラム`にそれぞれ以下のようにCSVデータとして記録する処理を実装していきます。
@@ -427,10 +438,156 @@ plt.show()
 このような分析は、実際の都市における避難計画を策定するときに役立つ可能性があります。
 
 
+## 上位２つの建物と下位２つの建物の比較
+モデルが選択した上位２つの建物と下位２つの建物について比較してみましょう。
+
+### 上位２つの建物の位置
+![alt text](image-10.png)
+
+上位２つの建物は、大通りを挟んだ道路に面しており、比較的避難者の移動がスムーズかつ１度に大量の避難者を移動させることができたと推測できます。
+
+### 下位２つの建物の位置
+![alt text](image-9.png)
+
+一方下位２つの建物は、比較的狭い道路に面している他、２つの建物の入り口は狭い路地を経由しないとたどり着くことができません。
+そのため、避難者の移動がスムーズに行えず、避難者による混雑により避難率推移の低下を招いたと考えられます。
+
+
+### 収容人数の比較 
+下記のコードを実行して、上位２つの建物と下位２つの建物の収容人数を比較してみましょう。
+
+```py
+def calc_capacity(floor_size: float, scale: float=0.01) -> int:
+    """収容可能人数＝総面積×0.8÷1.65㎡"""
+    return int((floor_size * 0.8 / 1.65) * scale)
+
+# 上位2つと下位2つの建物を取得
+top_2_buildings = model_counts.nlargest(2, 'Model Selection Count')
+bottom_2_buildings = model_counts.nsmallest(2, 'Model Selection Count')
+
+# 床総面積を追加
+top_2_buildings['FloorSize'] = [6010.55, 10125.8]  # 床面積はJSONファイルから取得
+bottom_2_buildings['FloorSize'] = [2775.74, 1441.94]
+
+# 容人数を追加
+top_2_buildings['Capacity'] = top_2_buildings['FloorSize'].apply(calc_capacity)
+bottom_2_buildings['Capacity'] = bottom_2_buildings['FloorSize'].apply(calc_capacity)
+
+
+# 上位2つと下位2つの建物を結合
+combined_buildings = pd.concat([top_2_buildings, bottom_2_buildings])
+
+# グラフを作成
+# 収容人数の比較棒グラフを作成
+plt.figure(figsize=(10, 6))
+
+sns.barplot(data=combined_buildings, x='Building', y='Capacity', palette='viridis')
+plt.title('Capacity of Top 2 and Bottom 2 Selected Buildings')
+plt.xlabel('Building')
+plt.xticks(rotation=90)
+plt.ylabel('Capacity')
+
+plt.show()
+```
+
+![alt text](image-7.png)
+
+このグラフから、モデルが選択した上位２つの建物は、収容人数が大きい建物であることが分かります。
+一方、下位２つの建物は、収容人数が小さい建物であることが分かります。
+
+この結果から、モデルが選択した建物は、収容人数が多い建物を優先的に選択している（訓練課程の中で収容人数が多い建物を優先的に選択することを学習した）ことが分かります。
+
+### 上位２つの建物と下位２つの建物の避難率の比較
+次に、モデルが選択した上位２つの建物と下位２つの建物のみを避難所に指定した場合のそれぞれの避難率を比較してみましょう。
+
+下記のコードを実行して、上位２つの建物と下位２つの建物の避難率を比較してみましょう。
+
+```py
+def load_rate_data(data_path: str) -> pd.DataFrame:
+    csv_paths = glob.glob(os.path.join(data_path, "*.csv"))
+    dfs = []
+
+    for path in csv_paths:
+        match = re.search(r"EvaRatesPerSec_Episode_(\d+)", path)
+        if match:
+            episode_num = int(match.group(1))
+            df = pd.read_csv(path)
+            print(f"Episode {episode_num} : {len(df)}")
+            df["episode"] = episode_num
+            dfs.append(df)
+
+    merged_model_df = pd.concat(dfs, ignore_index=True)
+    return merged_model_df
+
+top2_buildings_rate_data_path = "../../PLATEAUTutorial/Assets/<your_data_folder>"
+bottom_2_buildings_rate_data_path = "../../PLATEAUTutorial/Assets/<your_data_folder>"
+
+# 読み込み
+top2_buildings_rate_data = load_rate_data(top2_buildings_rate_data_path)
+bottom_2_buildings_rate_data = load_rate_data(bottom_2_buildings_rate_data_path)
+
+# エピソード番号でソート
+top2_buildings_rate_data = top2_buildings_rate_data.sort_values("episode")
+bottom_2_buildings_rate_data = bottom_2_buildings_rate_data.sort_values("episode")
+
+# 平均避難率を計算し比較グラフを作成
+# 各時間ごとの避難率の平均、分散、標準偏差を計算
+evacuation_stats_top = top2_buildings_rate_data.groupby('Time')['EvacuationRate'].agg(['mean', 'var', 'std']).reset_index()
+evacuation_stats_bottom = bottom_2_buildings_rate_data.groupby('Time')['EvacuationRate'].agg(['mean', 'var', 'std']).reset_index()
+# 平均値と標準偏差の範囲を計算
+evacuation_stats_top['lower'] = evacuation_stats_top['mean'] - evacuation_stats_top['std']
+evacuation_stats_top['upper'] = evacuation_stats_top['mean'] + evacuation_stats_top['std']
+evacuation_stats_bottom['lower'] = evacuation_stats_bottom['mean'] - evacuation_stats_bottom['std']
+evacuation_stats_bottom['upper'] = evacuation_stats_bottom['mean'] + evacuation_stats_bottom['std']
+
+# グラフを作成
+plt.figure(figsize=(12, 6))
+sns.lineplot(data=evacuation_stats_top, x='Time', y='mean', label='Top Bldgs Mean Evacuation Rate', color='orange')
+plt.fill_between(evacuation_stats_top['Time'], evacuation_stats_top['lower'], evacuation_stats_top['upper'], color='orange', alpha=0.2, label='Top Bldgs Standard Deviation Range')
+sns.lineplot(data=evacuation_stats_bottom, x='Time', y='mean', label='Bottom Bldgs Mean Evacuation Rate', color='blue')
+plt.fill_between(evacuation_stats_bottom['Time'], evacuation_stats_bottom['lower'], evacuation_stats_bottom['upper'], color='blue', alpha=0.2, label='Bottom Bldgs Standard Deviation Range')
+plt.title('Average Evacuation Rate Over Time with Standard Deviation')
+plt.xlabel('Time')
+plt.ylabel('Evacuation Rate')
+plt.legend()
+
+# 最終的な避難率の最大値,平均値,分散,標準偏差をグラフ内に表示
+max_evacuation_rate_top = top2_buildings_rate_data['EvacuationRate'].max()
+mean_evacuation_rate_top = top2_buildings_rate_data['EvacuationRate'].mean()
+var_evacuation_rate_top = top2_buildings_rate_data['EvacuationRate'].var()
+std_evacuation_rate_top = top2_buildings_rate_data['EvacuationRate'].std()
+
+max_evacuation_rate_bottom = bottom_2_buildings_rate_data['EvacuationRate'].max()
+mean_evacuation_rate_bottom = bottom_2_buildings_rate_data['EvacuationRate'].mean()
+var_evacuation_rate_bottom = bottom_2_buildings_rate_data['EvacuationRate'].var()
+std_evacuation_rate_bottom = bottom_2_buildings_rate_data['EvacuationRate'].std()
+
+
+plt.text(0.1, 0.9, f'Top Bldgs Max Evacuation Rate: {max_evacuation_rate_top:.2f}', transform=plt.gca().transAxes, color='orange')
+plt.text(0.1, 0.85, f'Top Bldgs Mean Evacuation Rate: {mean_evacuation_rate_top:.2f}', transform=plt.gca().transAxes, color='orange')
+plt.text(0.1, 0.8, f'Top Bldgs Variance Evacuation Rate: {var_evacuation_rate_top:.2f}', transform=plt.gca().transAxes, color='orange')
+plt.text(0.1, 0.75, f'Top Bldgs Standard Deviation Evacuation Rate: {std_evacuation_rate_top:.2f}', transform=plt.gca().transAxes, color='orange')
+
+plt.text(0.5, 0.9, f'Bottom Bldgs Max Evacuation Rate: {max_evacuation_rate_bottom:.2f}', transform=plt.gca().transAxes, color='blue')
+plt.text(0.5, 0.85, f'Bottom Bldgs Mean Evacuation Rate: {mean_evacuation_rate_bottom:.2f}', transform=plt.gca().transAxes, color='blue')
+plt.text(0.5, 0.8, f'Bottom Bldgs Variance Evacuation Rate: {var_evacuation_rate_bottom:.2f}', transform=plt.gca().transAxes, color='blue')
+plt.text(0.5, 0.75, f'Bottom Bldgs Standard Deviation Evacuation Rate: {std_evacuation_rate_bottom:.2f}', transform=plt.gca().transAxes, color='blue')
+
+plt.show()
+```
+
+![alt text](image-8.png)
+
+このグラフから、モデルが選出した上位２つの建物を選択した場合、最終的な避難率は、下位２つの建物を選択した場合と比較して、より高い避難率を示していることが分かります。
+また、全体的な推移も、下位２つの建物を選択した場合と比べ高く、安定していることが分かります。
+
+結果として、上位２つの建物を避難所として指定した場合の、シミュレーション終了時の避難率（今回のモデルの報酬）がモデル学習時の累積報酬が安定してきた段階と同程度(40%程度)であることから、これら上位2つの建物が避難率（モデルの報酬）の最大化に大きく寄与していることが伺え、モデルは学習シミュレーションを通じてこれらの建物を避難所として選択することを学習したと考えられます。
+
 # 結論
 モデルを適切に学習させることで、ランダム選択よりも効果的に避難所を選択し、全体の避難率を向上できる可能性が示唆されました。
 また、モデルの学習結果を分析することで、避難所として適切な建物を選定できることを示すことができました。
 
-今後さらにモデルのチューニングや、PLATEAUで利用可能な他の属性情報と組み合わせた分析を行う事で、より効果的な避難計画の策定に役立つ可能性があります。
+展望として、車両や信号などを配置し現実に近い交通状況を再現したりすることで、より実践的な避難シミュレーションの構築を目指すことができ、現実世界での結果の再現性を高めることができます。
+また、モデルのチューニングや、PLATEAUで利用可能な他の属性情報と組み合わせた分析を行う事で、より効果的な避難計画の策定に役立つ可能性があります。
 
 

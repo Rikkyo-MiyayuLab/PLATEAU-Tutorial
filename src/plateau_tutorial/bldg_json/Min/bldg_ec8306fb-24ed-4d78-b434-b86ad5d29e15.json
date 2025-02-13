@@ -1,0 +1,189 @@
+{
+    "rootCityObjects": [
+      {
+        "gmlID": "bldg_ec8306fb-24ed-4d78-b434-b86ad5d29e15",
+        "cityObjectIndex": [
+          0,
+          -1
+        ],
+        "cityObjectType": "COT_Building",
+        "attributes": [
+          {
+            "key": "bldg:measuredheight",
+            "type": "Double",
+            "value": "37.8"
+          },
+          {
+            "key": "bldg:storeysaboveground",
+            "type": "Integer",
+            "value": "11"
+          },
+          {
+            "key": "bldg:usage",
+            "type": "String",
+            "value": "店舗等併用共同住宅"
+          },
+          {
+            "key": "uro:buildingDataQualityAttribute",
+            "type": "AttributeSet",
+            "value": [
+              {
+                "key": "uro:lod1HeightType",
+                "type": "String",
+                "value": "航空写真図化_最高高さ"
+              }
+            ]
+          },
+          {
+            "key": "uro:buildingDetailAttribute",
+            "type": "AttributeSet",
+            "value": [
+              {
+                "key": "uro:areaClassificationType",
+                "type": "String",
+                "value": "市街化区域"
+              },
+              {
+                "key": "uro:buildingStructureOrgType",
+                "type": "String",
+                "value": "非木造（RC 造、SRC 造、鉄骨造等）"
+              },
+              {
+                "key": "uro:buildingStructureType",
+                "type": "String",
+                "value": "非木造"
+              },
+              {
+                "key": "uro:districtsAndZonesType",
+                "type": "String",
+                "value": "防火地域"
+              },
+              {
+                "key": "uro:landUseType",
+                "type": "String",
+                "value": "住宅用地（住宅、共同住宅、店舗等併用住宅、店舗等併用共同住宅、作業所併用住宅）"
+              },
+              {
+                "key": "uro:orgUsage2",
+                "type": "String",
+                "value": "店舗併用集合住宅（上記以外との併用）（集合住宅（上記２ ） と商業・業務系用途（下記6～10、12、16） を併用している場合）"
+              },
+              {
+                "key": "uro:specifiedBuildingCoverageRate",
+                "type": "Double",
+                "value": "0.8"
+              },
+              {
+                "key": "uro:specifiedFloorAreaRate",
+                "type": "Double",
+                "value": "6"
+              },
+              {
+                "key": "uro:surveyYear",
+                "type": "Integer",
+                "value": "2016"
+              },
+              {
+                "key": "uro:totalFloorArea",
+                "type": "Double",
+                "value": "2775.74"
+              },
+              {
+                "key": "uro:urbanPlanType",
+                "type": "String",
+                "value": "都市計画区域"
+              }
+            ]
+          },
+          {
+            "key": "uro:buildingDisasterRiskAttribute",
+            "type": "AttributeSet",
+            "value": [
+              {
+                "key": "uro:depth",
+                "type": "Double",
+                "value": "2.77"
+              },
+              {
+                "key": "uro:rank",
+                "type": "String",
+                "value": "0.5m以上3m未満"
+              },
+              {
+                "key": "uro:rankOrg",
+                "type": "String",
+                "value": "2.0m以上3.0m未満"
+              }
+            ]
+          },
+          {
+            "key": "uro:buildingIDAttribute",
+            "type": "AttributeSet",
+            "value": [
+              {
+                "key": "uro:branchID",
+                "type": "Integer",
+                "value": "1"
+              },
+              {
+                "key": "uro:buildingID",
+                "type": "String",
+                "value": "14201-bldg-34530"
+              },
+              {
+                "key": "uro:city",
+                "type": "String",
+                "value": "神奈川県横須賀市"
+              },
+              {
+                "key": "uro:prefecture",
+                "type": "String",
+                "value": "神奈川県"
+              }
+            ]
+          },
+          {
+            "key": "uro:description",
+            "type": "String",
+            "value": "神奈川県津波浸水想定図"
+          },
+          {
+            "key": "図形ID",
+            "type": "Integer",
+            "value": "88917"
+          },
+          {
+            "key": "変化フラグ",
+            "type": "String",
+            "value": "変更無し（建物形状、建物用途ともに変更なし）"
+          },
+          {
+            "key": "床面積換算係数",
+            "type": "Double",
+            "value": "0.59"
+          },
+          {
+            "key": "建物棟数フラグ",
+            "type": "String",
+            "value": "棟数カウント（棟数としてカウントする、単独の建物に適用する。複数ポリゴン分割された建物の、主たるポリゴンに適用する。）"
+          },
+          {
+            "key": "総建物階数",
+            "type": "Integer",
+            "value": "11"
+          },
+          {
+            "key": "附属建物フラグ",
+            "type": "String",
+            "value": "床面積に算入"
+          },
+          {
+            "key": "１階床面積",
+            "type": "Measure",
+            "value": "252"
+          }
+        ]
+      }
+    ],
+    "outsideParent": ""
+  }
