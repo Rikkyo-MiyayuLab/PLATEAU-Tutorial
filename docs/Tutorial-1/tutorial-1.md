@@ -16,16 +16,18 @@
     - [2-2. マテリアルの作成](#2-2-マテリアルの作成)
   - [3. 避難所の候補地の事前設定](#3-避難所の候補地の事前設定)
   - [4. 避難者が移動する経路を作る（tranへのナビゲーションメッシュの適用）](#4-避難者が移動する経路を作るtranへのナビゲーションメッシュの適用)
-  - [5. プログラムファイルの作成](#5-プログラムファイルの作成)
-  - [6. シミュレーション環境パラメータの設定](#6-シミュレーション環境パラメータの設定)
+  - [5. 避難者の生成ポイントを作成する](#5-避難者の生成ポイントを作成する)
+  - [6. プログラムファイルの作成](#6-プログラムファイルの作成)
+  - [7. シミュレーション環境パラメータの設定](#7-シミュレーション環境パラメータの設定)
     - [6-1. `ShelterManagementAgent`の設定](#6-1-sheltermanagementagentの設定)
-    - [6-2. `EnvManager`の設定](#6-2-envmanagerの設定)
+    - [6-2. `ShelterEnvManager`の設定](#6-2-shelterenvmanagerの設定)
+      - [6-2-1. 避難者生成モードについて](#6-2-1-避難者生成モードについて)
     - [6-3. `Evacuee`の設定](#6-3-evacueeの設定)
     - [6-4. ハイパーパラメータの設定](#6-4-ハイパーパラメータの設定)
-  - [7. 学習の実行と結果の確認](#7-学習の実行と結果の確認)
-    - [7-1. 学習の実行](#7-1-学習の実行)
-    - [7-2. 学習結果の分析](#7-2-学習結果の分析)
-    - [7-3. 学習済みモデルを使用してシミュレーションを動かす](#7-3-学習済みモデルを使用してシミュレーションを動かす)
+  - [8. 学習の実行と結果の確認](#8-学習の実行と結果の確認)
+    - [8-1. 学習の実行](#8-1-学習の実行)
+    - [8-2. 学習結果の分析](#8-2-学習結果の分析)
+    - [8-3. 学習済みモデルを使用してシミュレーションを動かす](#8-3-学習済みモデルを使用してシミュレーションを動かす)
 
 
 # 目的
@@ -219,7 +221,23 @@ AIがシミュレーション中に避難所として指定できる建物の候
 
     ![alt text](image-12.png)
 
-## 5. プログラムファイルの作成
+## 5. 避難者の生成ポイントを作成する
+[2-1. 避難者のプレハブの作成](#2-1-避難者のプレハブの作成)で作成した`Evacuee`オブジェクトを、環境内に生成する為の生成ポイントを作成します。
+上部メニューバーから「Window → 3D Object → Capsule」を選択し、生成したCapsuleオブジェクトを`SpawnPoint`という名前に設定します。
+
+![alt text](image-20.png)
+
+作成したら、識別用のタグを付与します。`Inspectorビュー`の上部にある`tag`プルダウンを開き、`Add Tag...`から`SpawnPos`という名前のタグを追加します。追加したら、`SpawnPoint`オブジェクトを選択し、`SpawnPos`タグを選択します。
+
+![alt text](image-22.png)
+
+次に、`Inspectorビュー`の下部にある、`Add Component`から`New Script`を選択し、`EvacueeSpawnPoint`という名前でスクリプトを作成します。
+
+![alt text](image-21.png)
+
+
+
+## 6. プログラムファイルの作成
 ここからは、C# 用いて、AIやシミュレーションの挙動を制御するスクリプトファイルを作成します。
 
 以下の各プログラムを作成し、各オブジェクトへアタッチしていきます。
@@ -313,6 +331,81 @@ AIがシミュレーション中に避難所として指定できる建物の候
     }
     ```
     作成後、Assetsフォルダ内にある`Evacuee`オブジェクトにアタッチしてください。
+</details>
+
+<details>
+<summary>避難者生成ポイントのプログラムの作成</summary>
+
+- `EvacueeSpawnPoint.cs`
+  
+```cs
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+/// <summary>
+/// カスタムスポーン用のポイント
+/// </summary>
+public class EvacueeSpawnPoint : MonoBehaviour {
+    
+    public GameObject EvacueePrefab; // 避難者のプレハブ
+    public float SpawnRadius = 10f; // 生成半径（この半径内にある道路上に生成）
+    public int SpawnSize = 50; // 生成する人数
+    private GameObject rangeIndicator; // スポーン範囲の表示オブジェクト
+
+    void Start() {
+        ShowRangeOff(); // 初期状態では非表示
+    }
+
+    public void SpawnEvacuee() {
+        Vector3 spawnPos = transform.position + Random.insideUnitSphere * SpawnRadius;
+        spawnPos.y = transform.position.y; // 地面に沿わせる
+        GameObject evacuee = Instantiate(EvacueePrefab, spawnPos, Quaternion.identity);
+        evacuee.transform.parent = transform.parent;
+        evacuee.tag = "Evacuee";
+    }
+
+    /// <summary>
+    /// ランタイムでスポーン範囲を半透明で表示（ミニマップ用レイヤー設定）
+    /// </summary>
+    public void ShowRangeOn() {
+        if (rangeIndicator == null) {
+            rangeIndicator = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            rangeIndicator.transform.SetParent(transform);
+            rangeIndicator.transform.localPosition = Vector3.zero;
+            rangeIndicator.transform.localScale = new Vector3(SpawnRadius * 2, SpawnRadius * 2, SpawnRadius * 2);
+
+
+            // マテリアルの設定（半透明）
+            Material transparentMaterial = new Material(Shader.Find("Standard"));
+            transparentMaterial.color = new Color(200f, 0f, 0f, 0.7f); // 半透明の緑色
+            transparentMaterial.SetFloat("_Mode", 3); // 透過設定
+            transparentMaterial.SetInt("_SrcBlend", (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            transparentMaterial.SetInt("_DstBlend", (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            transparentMaterial.SetInt("_ZWrite", 0);
+            transparentMaterial.DisableKeyword("_ALPHATEST_ON");
+            transparentMaterial.EnableKeyword("_ALPHABLEND_ON");
+            transparentMaterial.DisableKeyword("_ALPHAPREMULTIPLY_ON");
+            transparentMaterial.renderQueue = 3000;
+
+            rangeIndicator.GetComponent<Renderer>().material = transparentMaterial;
+            rangeIndicator.GetComponent<Collider>().enabled = false; // 当たり判定を無効化
+        }
+    }
+
+    /// <summary>
+    /// スポーン範囲を非表示
+    /// </summary>  
+    public void ShowRangeOff() {
+        if (rangeIndicator != null) {
+            Destroy(rangeIndicator);
+            rangeIndicator = null;
+        }
+    }
+}
+```
+
+作成後、`SpawnPoint`オブジェクトにアタッチしてください。
 </details>
 
 
@@ -654,7 +747,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
     /// <summary>
     /// シミュレータ環境全般の制御を行うクラス
     /// </summary>
-    public class EnvManager : MonoBehaviour {
+    public class ShelterEnvManager : MonoBehaviour {
         /**シミュレーションモードの選択を定義*/
         public enum SimulateMode {
             Train, // モデル訓練
@@ -1010,7 +1103,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
 </details>
 
 
-## 6. シミュレーション環境パラメータの設定
+## 7. シミュレーション環境パラメータの設定
 
 ### 6-1. `ShelterManagementAgent`の設定
 AIの挙動を制御する`ShelterManagementAgent`の設定を行います。Inspectorから`Behavior Parameters`の以下項目を設定します。
@@ -1026,9 +1119,9 @@ Actions
 
 今回エピソード終了は、次の全体制御用プログラムで行っているため、`Max Steps`は`0`のままで設定してください。
 
-### 6-2. `EnvManager`の設定
-シミュレーション全体の条件を設定する`EnvManager`の設定を行います。Inspectorから以下の項目を設定します。
-- `EnvManager`
+### 6-2. `ShelterEnvManager`の設定
+シミュレーション全体の条件を設定する`ShelterEnvManager`の設定を行います。Inspectorから以下の項目を設定します。
+- `ShelterEnvManager`
 ```
 <Environment Settings>
 Mode               : Train / Inference （シミュレーションモード 訓練 / 推論 の選択）
@@ -1040,6 +1133,26 @@ Spawn Radius : 10 （避難者のスポーンエリアの半径）// エディ�
 Spawn Center : (0,0,0) （避難者のスポーンエリアの中心位置）
 Agent : ShelterManagementAgent （エージェントのオブジェクト）
 ```
+#### 6-2-1. 避難者生成モードについて
+
+![alt text](image-23.png)
+
+- `Random` : 避難者を設定半径内の道路上にランダム生成します。避難者のスポーンエリアは`Spawn Radius`で指定した範囲内にランダムに生成されます。
+```
+Spawn Radius : 10 （避難者のスポーンエリアの半径）// エディタ上に赤い円で表示されます
+```
+ここで設定した半径に基づいて避難者生成が行われます。広域な範囲で満遍なく避難者を生成したい場合は、このモードを利用します。
+
+- `Custom` : 避難者を特定の地点でスポーンさせたい場合に使用します。避難者のスポーン中心地点は`SpawnPoint`オブジェクトの位置になります。この時の避難者生成条件は`EvacueeSpawnPoint`の設定値になります。
+
+このモードは、特定の地域や複数地域設定することができ、地域ごとに避難者の生成条件を変えたい場合に使用します。
+実行時には、設定された生成ポイントの内、１つがランダムに選択されシミュレーションが実行されます。１回のシミュレーション終了後には、再度ランダムに生成ポイントが１つ選択されます。
+```
+Evacuee Prefab : 避難者のプレハブ
+Spawn Radius : 10 （避難者の生成半径）
+Spawn Size : 50 （避難者の生成人数）
+```
+
 
 ![alt text](image-16.png)
 
@@ -1088,9 +1201,9 @@ behaviors:
 - 利用可能なパラメータの値については[公式ドキュメント](https://github.com/Unity-Technologies/ml-agents/blob/develop/docs/Training-Configuration-File.md)を参照してください。
 
 
-## 7. 学習の実行と結果の確認
+## 8. 学習の実行と結果の確認
 
-### 7-1. 学習の実行
+### 8-1. 学習の実行
 本プロジェクトのルートディレクトリ上でターミナルを開き、以下のコマンドを実行します。
 ``` bash
 mlagents-learn Assets/Config/Tutorial-1.yaml --run-id=ShelterAgent
@@ -1103,7 +1216,7 @@ mlagents-learn Assets/Config/Tutorial-1.yaml --run-id=ShelterAgent
 
 ![alt text](../Common/image-23.png)
 
-### 7-2. 学習結果の分析
+### 8-2. 学習結果の分析
 
 学習が完了すると、`results`ディレクトリに学習した結果のニューラルネットワークモデルが保存されます。学習結果を確認するには、以下のコマンドを実行します。
 ``` bash
@@ -1111,7 +1224,7 @@ tensorboard --logdir=./results
 ```
 ![alt text](../Common/image-24.png)
 
-### 7-3. 学習済みモデルを使用してシミュレーションを動かす
+### 8-3. 学習済みモデルを使用してシミュレーションを動かす
 学習済みモデルを使用して、シミュレーションを動かす手順は以下の通りです。
 
 1. エージェントにモデルを割り当てる
