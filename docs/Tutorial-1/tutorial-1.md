@@ -271,21 +271,20 @@ AIがシミュレーション中に避難所として指定できる建物の候
     public class Evacuee : MonoBehaviour {
         
         [Header("Movement Target")]
-        public GameObject Target;
-        private NavMeshAgent NavAgent;
-        private EnvManager _env;
+        public GameObject Target; // 現在の移動目標
+        private NavMeshAgent NavAgent; // NavMeshAgentコンポーネント
+        private EnvManager _env; // ShelterEnvManagerの参照
         private bool isEvacuating = false; // 避難処理中のフラグ。当たり判定により発火するため、複数回避難処理が行われるのを防ぐためのフラグ
-        private List<string> excludeTowers; //1度避難したタワーのUUIDを格納するリスト
+        private List<string> excludeShelters; //1度避難したタワーのUUIDを格納するリスト
         void Awake() {
             NavAgent = GetComponent<NavMeshAgent>();    
-            excludeTowers = new List<string>(); //初期化
+            excludeShelters = new List<string>(); 
 
             _env = GetComponentInParent<EnvManager>();
             _env.Agent.OnDidActioned += () => {
-                Debug.Log("OnDidActioned");
-                // 最短距離の避難所を探す
+                // エージェントが建物を選択したことを検知して最短距離の避難所を探す
                 if(this != null && this.gameObject.activeSelf) {
-                    List<GameObject> towers = SearchTowers();
+                    List<GameObject> towers = SearchShelters();
                     if(towers.Count > 0) {
                         Target = towers[0]; //最短距離のタワーを目標に設定
                         NavAgent.SetDestination(Target.transform.position);
@@ -301,40 +300,52 @@ AIがシミュレーション中に避難所として指定できる建物の候
         /// </summary>
         /// <param name="excludeTowerUUIDs">除外するタワーのUUID.未指定の場合はnull</param>
         /// <returns>localField内のTowerオブジェクトのリスト</returns>
-        private List<GameObject> SearchTowers(List<string> excludeTowerUUIDs = null) {
+        private List<GameObject> SearchShelters(List<string> excludeTowerUUIDs = null) {
+            // タグ名から避難所を検索する
             GameObject[] towers = GameObject.FindGameObjectsWithTag("Shelter");
+            GameObject[] constShelters = GameObject.FindGameObjectsWithTag("ConstShelter");
+            List<GameObject> Iterates = new List<GameObject>();
+            foreach (var shelter in towers) {
+                Iterates.Add(shelter);
+            }
+            foreach (var shelter in constShelters) {
+                Iterates.Add(shelter);
+            }
+            // 訪れたことのない避難所を探す
             List<GameObject> sortedTowerPoints = new List<GameObject>();
-            foreach (var tower in towers) {
-                if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Tower>().uuid)) {
+            foreach (var tower in Iterates) {
+                if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Shelter>().uuid)) {
                     continue;
                 }
-                GameObject point = tower.transform.GetChild(0).gameObject;
+                GameObject point = tower.transform.GetChild(0).gameObject; // 避難所に設置した目印オブジェクトを取得
                 sortedTowerPoints.Add(point);
             }
             // NOTE: エピソード更新時にgameObjectがnullになることがあるので、nullチェックを行う
             if(this != null) {
+                // 距離別にソート
                 sortedTowerPoints.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(Vector3.Distance(b.transform.position, transform.position))); 
             }
             return sortedTowerPoints;
         }
 
         /// <summary>
-        /// 避難を行う
+        /// 避難を行う処理
+        /// 避難所のオブジェクトにアタッチされ、当たり判定により呼び出される 
         /// </summary>
-        public void Evacuation(Tower tower) {
+        public void Evacuation(Shelter shelter) {
             if(isEvacuating) {
                 return;
             }
             isEvacuating = true;
-            if(tower.currentCapacity > 0) {
-                tower.NowAccCount++;
+            // キャパシティーがある場合、避難処理を行う
+            if(shelter.currentCapacity > 0) {
+                shelter.NowAccCount++;
                 gameObject.SetActive(false);
-            } else { //キャパシティがいっぱいの場合、次のタワーを探す
-                excludeTowers.Add(tower.uuid);
-                List<GameObject> towers = SearchTowers(excludeTowers);
-                Debug.Log("TowersCount" + towers.Count);
-                if(towers.Count > 0) {
-                    Target = towers[0]; //最短距離のタワーを目標に設定
+            } else { //キャパシティがいっぱいの場合、次の避難所を探す
+                excludeShelters.Add(shelter.uuid);
+                List<GameObject> shelters = SearchShelters(excludeShelters);
+                if(shelters.Count > 0) {
+                    Target = shelters[0]; //最短距離のタワーを目標に設定
                     NavAgent.SetDestination(Target.transform.position);
                 }
             }
@@ -342,6 +353,7 @@ AIがシミュレーション中に避難所として指定できる建物の候
         }
 
     }
+
     ```
     作成後、Assetsフォルダ内にある`Evacuee`オブジェクトにアタッチしてください。
 </details>
@@ -427,7 +439,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
 
 - `Shelter.cs`
   ```cs
-  using System.Collections;
+    using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
 
@@ -435,15 +447,12 @@ public class EvacueeSpawnPoint : MonoBehaviour {
     /// 避難所に関するスクリプト（オブジェクト１台分）
     /// 現在の収容人数や、受け入れ可否等のデータを用意
     /// </summary>
-    public class Tower : MonoBehaviour{
+    public class Shelter : MonoBehaviour{
         public int MaxCapacity = 10; //最大収容人数
         public int NowAccCount = 0; //現在の収容人数
         public int currentCapacity; //現在の受け入れ可能人数：最大収容人数 - 現在の収容人数
 
         public string uuid; //タワーの識別子
-
-        private string LogPrefix = "Tower: ";
-
         /**Events */
         public delegate void AcceptRejected(int NowAccCount) ; //収容定員が超過した時に発火する
         public AcceptRejected onRejected;
@@ -453,10 +462,15 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         void Start() {
             _env = GetComponentInParent<EnvManager>();
             _env.OnEndEpisode += (float _) => {
+                // 環境側のエピソード終了時に収容人数をリセット
                 NowAccCount = 0;
             };
         }
 
+
+        /// <summary>
+        /// リアルタイムで収容人数を更新
+        /// </summary>
         void Update() {
             currentCapacity = MaxCapacity - NowAccCount;
             if (currentCapacity <= 0) {
@@ -464,8 +478,11 @@ public class EvacueeSpawnPoint : MonoBehaviour {
             }
         }
 
+        /// <summary>
+        /// 避難者オブジェクトが建物に到達したときに呼び出される。当たり関数
+        /// </summary>
+        /// <param name="other"></param>
         void OnTriggerEnter(Collider other) {
-            
             bool isEvacuee = other.CompareTag("Evacuee");
             if (isEvacuee) {
                 Evacuee evacuee = other.GetComponent<Evacuee>();
@@ -475,6 +492,8 @@ public class EvacueeSpawnPoint : MonoBehaviour {
             
         }
     }
+
+
 
   ```
   作成後、シーン内に設定した各避難所の建物オブジェクトにアタッチしてください。
@@ -496,7 +515,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
 
     /// <summary>
     /// 実装する全てのエージェントは、
-    /// ML-AgentsパッケージにあるAgentクラスを継承して実装します。 
+    /// ML-AgentsパッケージにあるAgentクラスを継承して実装します。
     /// https://docs.unity3d.com/Packages/com.unity.ml-agents@3.0/api/Unity.MLAgents.Agent.html
     /// </summary>
 
@@ -530,19 +549,21 @@ public class EvacueeSpawnPoint : MonoBehaviour {
 
         /// <summary>
         /// Agent.EndEpisode()後に呼ばれる
+        /// 環境の初期化処理実行後に、エージェントの行動をリクエストします。 
         /// </summary>
         public override void OnEpisodeBegin() {
             _env.OnEpisodeBegin();
-            Debug.Log("Episode begin");
-            RequestDecision();
+            RequestDecision(); // 行動選択をリクエスト
         }
 
         public void OnEndEpisode() {
             // データの保存とActionLogsの初期化
+            // 避難所の建物IDを取得
             string[] shelterIds = new string[ShelterCandidates.Length];
             for(int i = 0; i < ShelterCandidates.Length; i++) {
                 shelterIds[i] = ShelterCandidates[i].name;
             }
+            // CSVデータの作成
             string[] headers = new string[ShelterCandidates.Length + 2];
             headers[0] = "Episode";
             headers[1] = "Step";
@@ -553,7 +574,8 @@ public class EvacueeSpawnPoint : MonoBehaviour {
                 (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() }.Concat(data.Item3.ConvertAll(x => x ? "1" : "0")).ToArray(),
                 $"{_env.recordID}/ActionLog_Episode_{_env.currentEpisodeId}.csv"
             );
-            ActionLogs.Clear();
+
+            ActionLogs.Clear(); // 行動ログの初期化
         }
 
         /// <summary>
@@ -601,7 +623,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         /// </summary>
         /// <param name="actions">モデルの行動出力を受け取るための仮引数で、この値を元に環境に行動を反映させます</param>
         public override void OnActionReceived(ActionBuffers actions) {
-            var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序
+            var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序。[<建物１の避難所選択結果 0 or 1>, <建物２の避難所選択結果 0 or 1>, ...]
 
             List<bool> selectList = new List<bool>();
             if(Selects.Length != ShelterCandidates.Length) {
@@ -677,7 +699,11 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         public string Type { get; set; }
 
         private object value;
-
+        
+        /// <summary>
+        /// ゲッター (get) では、Type が "AttributeSet" である場合には AttributeSetValue を返し、それ以外の場合には value を返します。これは、Type に応じて異なる値を返すための条件付きロジックを実装しています。
+        /// セッター (set) では、Type が "AttributeSet" であり、かつ value が JArray 型である場合に特別な処理を行います。この場合、value を JArray としてキャストし、それを List<AttributeValue> に変換して AttributeSetValue に設定します。JArray は JSON 配列を表す型であり、これをリストに変換することで、JSON データをオブジェクトのリストとして扱えるようにしています。
+        /// </summary>
         [JsonProperty("value")]
         public object Value
         {
@@ -708,6 +734,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         public string CityObjectType { get; set; }
         public List<AttributeValue> Attributes { get; set; }
     }
+
 
     ```
     後述の`シミュレーション環境制御プログラムの作成`で建物オブジェクトの属性情報取得で使用します。
@@ -790,7 +817,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
     /// <summary>
     /// シミュレータ環境全般の制御を行うクラス
     /// </summary>
-    public class ShelterEnvManager : MonoBehaviour {
+    public class EnvManager : MonoBehaviour {
         /**シミュレーションモードの選択を定義*/
         public enum SimulateMode {
             Train, // モデル訓練
@@ -830,6 +857,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
 
         public GameObject AgentObj;
         public ShelterManagementAgent Agent;
+        public bool IsDataCollectionMode;
 
         [Header("Objects")]
         [System.NonSerialized]
@@ -843,18 +871,21 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         public TextMeshProUGUI evacRateCounter;
 
         // Event Listeners
+        /** エピソード終了時に発行するイベント関数 */
         public delegate void EndEpisodeHandler(float evacueeRate);
         public EndEpisodeHandler OnEndEpisode;
+        /**エピソード開始時に発行するイベント関数 */
         public delegate void StartEpisodeHandler();
         public StartEpisodeHandler OnStartEpisode;
         [Header("Parameters")]
         public float EvacuationRate; // 全体の避難率
         public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
-        public int currentStep;
-        private float currentTimeSec;
-        private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
-        public int currentEpisodeId = 0;
-        public string recordID;
+        public int currentStep; // 現在のステップ数
+        private float currentTimeSec; //現在の経過時間（秒）
+        private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>(); // 避難率の時間変化を記録するリスト
+        public int currentEpisodeId = 0; // エピソード番号
+        public string recordID; // データ記録用に実行時間を元にしたIDを生成
+
         void Start() {
             if(Mode == SimulateMode.Inference) {
                 Time.timeScale = TimeScale; // 推論時のみシミュレーションの時間スケールを設定
@@ -873,6 +904,10 @@ public class EvacueeSpawnPoint : MonoBehaviour {
             CurrentShelters = new List<GameObject>(); // 避難所のリストを初期化
             Shelters = new List<GameObject>(); // 避難所のリストを初期化
             currentStep = Agent.StepCount;
+
+            if(IsDataCollectionMode) {
+                Agent.Disabled = true;
+            }
 
             // 避難所登録
             Shelters = new List<GameObject>(GameObject.FindGameObjectsWithTag("Shelter"));
@@ -895,6 +930,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
             OnEndEpisode += OnEndEpisodeHandler;
         }
 
+        // エディタ上で、避難者の生成範囲を赤円で示す
         void OnDrawGizmos() {
             if(EvacSpawnMode == SpawnMode.Random) {
                 Gizmos.color = Color.red;
@@ -902,6 +938,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
             }
         }
 
+        // 避難率の更新や、経過時間等シミュレーションの更新処理
         void FixedUpdate() {
             currentTimeSec += Time.deltaTime;
             EvacuationRate = GetCurrentEvacueeRate();
@@ -912,6 +949,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
             }
         }
 
+        /// エピソード終了時に実行する。データの保存。
         private void OnEndEpisodeHandler(float evacuateRate) {
             // 1. 避難率による報酬
             float evacuationRateReward = GetCurrentEvacueeRate();
@@ -932,8 +970,9 @@ public class EvacueeSpawnPoint : MonoBehaviour {
                     $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
                 );
             }
-            Agent.OnEndEpisode();
 
+            /**エピソード終了の発行*/
+            Agent.OnEndEpisode();
             Agent.EndEpisode();
             currentEpisodeId++;
         }
@@ -986,6 +1025,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
                     point.ShowRangeOn();
                     float radius = point.SpawnRadius;
                     Vector3 spawnCenter = selectSpawnPoint.transform.position;
+                    // 生成ポイントを中心としたランダムなナビメッシュ上の位置を取得
                     Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
                     for (int i = 0; i < SpawnEvacueeSize; i++) {
                         SpawnEvacuee(spawnPos);

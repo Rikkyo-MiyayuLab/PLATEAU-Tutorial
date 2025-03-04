@@ -12,9 +12,6 @@ public class Shelter : MonoBehaviour{
     public int currentCapacity; //現在の受け入れ可能人数：最大収容人数 - 現在の収容人数
 
     public string uuid; //タワーの識別子
-
-    private string LogPrefix = "shelter: ";
-
     /**Events */
     public delegate void AcceptRejected(int NowAccCount) ; //収容定員が超過した時に発火する
     public AcceptRejected onRejected;
@@ -24,10 +21,15 @@ public class Shelter : MonoBehaviour{
     void Start() {
         _env = GetComponentInParent<EnvManager>();
         _env.OnEndEpisode += (float _) => {
+            // 環境側のエピソード終了時に収容人数をリセット
             NowAccCount = 0;
         };
     }
 
+
+    /// <summary>
+    /// リアルタイムで収容人数を更新
+    /// </summary>
     void Update() {
         currentCapacity = MaxCapacity - NowAccCount;
         if (currentCapacity <= 0) {
@@ -35,11 +37,12 @@ public class Shelter : MonoBehaviour{
         }
     }
 
+    /// <summary>
+    /// 避難者オブジェクトが建物に到達したときに呼び出される。当たり関数
+    /// </summary>
+    /// <param name="other"></param>
     void OnTriggerEnter(Collider other) {
-        
-        //Debug.Log("OnTriggerEnter Tower");
         bool isEvacuee = other.CompareTag("Evacuee");
-        //Debug.Log("isEvacuee?" + isEvacuee);
         if (isEvacuee) {
             Evacuee evacuee = other.GetComponent<Evacuee>();
             evacuee.Evacuation(this);

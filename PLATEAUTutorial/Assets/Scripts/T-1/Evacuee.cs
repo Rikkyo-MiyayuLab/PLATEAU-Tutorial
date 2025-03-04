@@ -13,16 +13,16 @@ public class Evacuee : MonoBehaviour {
     private NavMeshAgent NavAgent; // NavMeshAgentコンポーネント
     private EnvManager _env; // ShelterEnvManagerの参照
     private bool isEvacuating = false; // 避難処理中のフラグ。当たり判定により発火するため、複数回避難処理が行われるのを防ぐためのフラグ
-    private List<string> excludeTowers; //1度避難したタワーのUUIDを格納するリスト
+    private List<string> excludeShelters; //1度避難したタワーのUUIDを格納するリスト
     void Awake() {
         NavAgent = GetComponent<NavMeshAgent>();    
-        excludeTowers = new List<string>(); 
+        excludeShelters = new List<string>(); 
 
         _env = GetComponentInParent<EnvManager>();
         _env.Agent.OnDidActioned += () => {
             // エージェントが建物を選択したことを検知して最短距離の避難所を探す
             if(this != null && this.gameObject.activeSelf) {
-                List<GameObject> towers = SearchTowers();
+                List<GameObject> towers = SearchShelters();
                 if(towers.Count > 0) {
                     Target = towers[0]; //最短距離のタワーを目標に設定
                     NavAgent.SetDestination(Target.transform.position);
@@ -38,7 +38,8 @@ public class Evacuee : MonoBehaviour {
     /// </summary>
     /// <param name="excludeTowerUUIDs">除外するタワーのUUID.未指定の場合はnull</param>
     /// <returns>localField内のTowerオブジェクトのリスト</returns>
-    private List<GameObject> SearchTowers(List<string> excludeTowerUUIDs = null) {
+    private List<GameObject> SearchShelters(List<string> excludeTowerUUIDs = null) {
+        // タグ名から避難所を検索する
         GameObject[] towers = GameObject.FindGameObjectsWithTag("Shelter");
         GameObject[] constShelters = GameObject.FindGameObjectsWithTag("ConstShelter");
         List<GameObject> Iterates = new List<GameObject>();
@@ -48,38 +49,41 @@ public class Evacuee : MonoBehaviour {
         foreach (var shelter in constShelters) {
             Iterates.Add(shelter);
         }
-
+        // 訪れたことのない避難所を探す
         List<GameObject> sortedTowerPoints = new List<GameObject>();
         foreach (var tower in Iterates) {
             if(excludeTowerUUIDs != null && excludeTowerUUIDs.Contains(tower.GetComponent<Shelter>().uuid)) {
                 continue;
             }
-            GameObject point = tower.transform.GetChild(0).gameObject;
+            GameObject point = tower.transform.GetChild(0).gameObject; // 避難所に設置した目印オブジェクトを取得
             sortedTowerPoints.Add(point);
         }
         // NOTE: エピソード更新時にgameObjectがnullになることがあるので、nullチェックを行う
         if(this != null) {
+            // 距離別にソート
             sortedTowerPoints.Sort((a, b) => Vector3.Distance(a.transform.position, transform.position).CompareTo(Vector3.Distance(b.transform.position, transform.position))); 
         }
         return sortedTowerPoints;
     }
 
     /// <summary>
-    /// 避難を行う
+    /// 避難を行う処理
+    /// 避難所のオブジェクトにアタッチされ、当たり判定により呼び出される 
     /// </summary>
-    public void Evacuation(Shelter tower) {
+    public void Evacuation(Shelter shelter) {
         if(isEvacuating) {
             return;
         }
         isEvacuating = true;
-        if(tower.currentCapacity > 0) {
-            tower.NowAccCount++;
+        // キャパシティーがある場合、避難処理を行う
+        if(shelter.currentCapacity > 0) {
+            shelter.NowAccCount++;
             gameObject.SetActive(false);
-        } else { //キャパシティがいっぱいの場合、次のタワーを探す
-            excludeTowers.Add(tower.uuid);
-            List<GameObject> towers = SearchTowers(excludeTowers);
-            if(towers.Count > 0) {
-                Target = towers[0]; //最短距離のタワーを目標に設定
+        } else { //キャパシティがいっぱいの場合、次の避難所を探す
+            excludeShelters.Add(shelter.uuid);
+            List<GameObject> shelters = SearchShelters(excludeShelters);
+            if(shelters.Count > 0) {
+                Target = shelters[0]; //最短距離のタワーを目標に設定
                 NavAgent.SetDestination(Target.transform.position);
             }
         }

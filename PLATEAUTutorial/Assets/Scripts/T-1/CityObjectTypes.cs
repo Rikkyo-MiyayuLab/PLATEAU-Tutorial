@@ -8,7 +8,11 @@ public class AttributeValue
     public string Type { get; set; }
 
     private object value;
-
+    
+    /// <summary>
+    /// ゲッター (get) では、Type が "AttributeSet" である場合には AttributeSetValue を返し、それ以外の場合には value を返します。これは、Type に応じて異なる値を返すための条件付きロジックを実装しています。
+    /// セッター (set) では、Type が "AttributeSet" であり、かつ value が JArray 型である場合に特別な処理を行います。この場合、value を JArray としてキャストし、それを List<AttributeValue> に変換して AttributeSetValue に設定します。JArray は JSON 配列を表す型であり、これをリストに変換することで、JSON データをオブジェクトのリストとして扱えるようにしています。
+    /// </summary>
     [JsonProperty("value")]
     public object Value
     {

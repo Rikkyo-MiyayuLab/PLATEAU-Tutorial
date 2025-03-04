@@ -72,11 +72,11 @@ public class EnvManager : MonoBehaviour {
     [Header("Parameters")]
     public float EvacuationRate; // 全体の避難率
     public bool EnableEnv = false; // 環境の準備が完了したか否か（利用不可の場合はfalse）
-    public int currentStep;
-    private float currentTimeSec;
-    private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>();
-    public int currentEpisodeId = 0;
-    public string recordID;
+    public int currentStep; // 現在のステップ数
+    private float currentTimeSec; //現在の経過時間（秒）
+    private List<Tuple<float, float>> evaRatePerSec = new List<Tuple<float, float>>(); // 避難率の時間変化を記録するリスト
+    public int currentEpisodeId = 0; // エピソード番号
+    public string recordID; // データ記録用に実行時間を元にしたIDを生成
     void Start() {
         if(Mode == SimulateMode.Inference) {
             Time.timeScale = TimeScale; // 推論時のみシミュレーションの時間スケールを設定
@@ -158,8 +158,9 @@ public class EnvManager : MonoBehaviour {
                 $"{recordID}/EvaRatesPerSec_Episode_{currentEpisodeId}.csv"
             );
         }
-        Agent.OnEndEpisode();
 
+        /**エピソード終了の発行*/
+        Agent.OnEndEpisode();
         Agent.EndEpisode();
         currentEpisodeId++;
     }
@@ -212,6 +213,7 @@ public class EnvManager : MonoBehaviour {
                 point.ShowRangeOn();
                 float radius = point.SpawnRadius;
                 Vector3 spawnCenter = selectSpawnPoint.transform.position;
+                // 生成ポイントを中心としたランダムなナビメッシュ上の位置を取得
                 Vector3 spawnPos = GetRandomPositionOnNavMesh(radius, spawnCenter);
                 for (int i = 0; i < SpawnEvacueeSize; i++) {
                     SpawnEvacuee(spawnPos);

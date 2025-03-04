@@ -43,19 +43,21 @@ public class ShelterManagementAgent : Agent {
 
     /// <summary>
     /// Agent.EndEpisode()後に呼ばれる
+    /// 環境の初期化処理実行後に、エージェントの行動をリクエストします。 
     /// </summary>
     public override void OnEpisodeBegin() {
         _env.OnEpisodeBegin();
-        Debug.Log("Episode begin");
-        RequestDecision();
+        RequestDecision(); // 行動選択をリクエスト
     }
 
     public void OnEndEpisode() {
         // データの保存とActionLogsの初期化
+        // 避難所の建物IDを取得
         string[] shelterIds = new string[ShelterCandidates.Length];
         for(int i = 0; i < ShelterCandidates.Length; i++) {
             shelterIds[i] = ShelterCandidates[i].name;
         }
+        // CSVデータの作成
         string[] headers = new string[ShelterCandidates.Length + 2];
         headers[0] = "Episode";
         headers[1] = "Step";
@@ -66,7 +68,8 @@ public class ShelterManagementAgent : Agent {
             (data) => new string[] { data.Item1.ToString(), data.Item2.ToString() }.Concat(data.Item3.ConvertAll(x => x ? "1" : "0")).ToArray(),
             $"{_env.recordID}/ActionLog_Episode_{_env.currentEpisodeId}.csv"
         );
-        ActionLogs.Clear();
+
+        ActionLogs.Clear(); // 行動ログの初期化
     }
 
     /// <summary>
@@ -114,7 +117,7 @@ public class ShelterManagementAgent : Agent {
     /// </summary>
     /// <param name="actions">モデルの行動出力を受け取るための仮引数で、この値を元に環境に行動を反映させます</param>
     public override void OnActionReceived(ActionBuffers actions) {
-        var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序
+        var Selects = actions.DiscreteActions; //エージェントの選択。環境の候補地配列と同じ順序。[<建物１の避難所選択結果 0 or 1>, <建物２の避難所選択結果 0 or 1>, ...]
 
         List<bool> selectList = new List<bool>();
         if(Selects.Length != ShelterCandidates.Length) {
