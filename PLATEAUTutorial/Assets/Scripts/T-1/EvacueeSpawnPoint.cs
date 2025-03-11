@@ -16,6 +16,11 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         ShowRangeOff(); // 初期状態では非表示
     }
 
+    void OnDrawGizmos() {
+        Gizmos.color = new Color(1, 0, 0, 1.0f);
+        Gizmos.DrawSphere(transform.position, SpawnRadius);
+    }
+
     public void SpawnEvacuee() {
         Vector3 spawnPos = transform.position + Random.insideUnitSphere * SpawnRadius;
         spawnPos.y = transform.position.y; // 地面に沿わせる
@@ -25,7 +30,7 @@ public class EvacueeSpawnPoint : MonoBehaviour {
     }
 
     /// <summary>
-    /// ランタイムでスポーン範囲を半透明で表示（ミニマップ用レイヤー設定）
+    /// ランタイムでスポーン範囲を半透明で表示
     /// </summary>
     public void ShowRangeOn() {
         if (rangeIndicator == null) {

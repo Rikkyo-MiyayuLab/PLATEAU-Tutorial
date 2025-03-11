@@ -1210,7 +1210,7 @@ Actions
 Mode               : Train / Inference （シミュレーションモード 訓練 / 推論 の選択）
 Evac Spawn Mode    : Random / Custom （避難者の生成方法の指定 ランダム / カスタム の選択）
 Acc Simulate Scale : 0.01 （避難所の収容人数のスケーリング係数。生成する避難者数に合わせて適宜調節） 
-Max Seconds     : 120 （シミュレーションの最大時間（秒））
+Max Seconds     : 1800 （シミュレーションの最大時間（秒））
 Spawn Evacuee Size : 50 （生成する避難者の数）// 数が多いと処理が重くなるため、適宜調整してください。
 Spawn Radius : 10 （避難者のスポーンエリアの半径）// エディタ上に赤い円で表示されます
 Spawn Center : (0,0,0) （避難者のスポーンエリアの中心位置）
@@ -1371,7 +1371,7 @@ tensorboard --logdir=./results
 学習済みモデルを使用して、シミュレーションを動かす手順は以下の通りです。
 
 1. エージェントにモデルを割り当てる
-    学習済みモデルをAssetsフォルダにコピーし、シーン内の`BusAgent`を選択し`Behavior Parameters`の`Model`にコピーしたモデルを割り当てます。
+    学習済みモデルをAssetsフォルダにコピーし、シーン内の`ShelterSelectAgent`を選択し`Behavior Parameters`の`Model`にコピーしたモデルを割り当てます。
 
     ![alt text](image-18.png)
 
