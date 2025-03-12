@@ -6,6 +6,7 @@
   - [学習過程の分析](#学習過程の分析)
       - [累積報酬の推移](#累積報酬の推移)
   - [モデルの評価](#モデルの評価)
+    - [評価条件](#評価条件)
     - [データ記録用の処理の作成](#データ記録用の処理の作成)
     - [データ可視化用の処理の作成](#データ可視化用の処理の作成)
     - [①避難率の比較](#避難率の比較)
@@ -62,7 +63,48 @@ TensorBoard 2.18.0 at http://localhost:6006/ (Press CTRL+C to quit)
 
 ![alt text](image-11.png)
 
-避難者はマップ上の赤点で示した地点（今回合計５か所任意に配置）を中心に、その道路上で生成され、シミュレーション開始と同時に避難行動を開始するものとします。
+### 評価条件
+各コンポーネントの設定値は以下の様に設定しました。
+
+- ShelterEnvManagerの設定値
+    ```
+    Evac Spawn Mode : Custom
+    Acc SImulate Scale : 0.01 #各避難所候補地の収容人数が数十人程度となるよう調整
+    Max Seconds : 1800 #制限時間（秒）
+    ```
+- SpawnPos : 計７箇所の地点に配置
+
+    <details>
+    <summary>避難者の生成ポイント配置地点（中心点を赤点にて描画）</summary>
+
+    ![alt text](image-12.png)
+
+    </details>
+
+    ```
+    Spawn Radius : 10
+    Spawn Size : 50 # シミュレーション 1回あたりの避難者出現人数
+    ```
+
+- ShelterManagementAgentの設定値
+    ```
+    Discreate Branches : 11
+    各 Branch Size : 2
+    ```
+
+- 避難者のパラメータ設定
+    ```
+    NavMeshAgent
+        Base Offset : 1
+        Speed : 3.5
+        Obstacle Avoidance
+            Radius : 0.5
+            Height : 2
+            Quality : None
+    ```       
+
+
+避難者はマップ上の赤点で示した地点（今回合計７か所任意に配置）を中心に、その道路上で生成され、シミュレーション開始と同時に避難行動を開始するものとします。
 
 ### データ記録用の処理の作成
 実装編で作成した、`シミュレーション環境制御プログラム`と`AI用プログラム`にそれぞれ以下のようにCSVデータとして記録する処理を実装していきます。
@@ -138,6 +180,7 @@ public class EnvManager : MonoBehaviour {
         Agent.AddReward(totalReward);
 
         if(IsRecordData) {
+            // 経過時間（秒）とその時の避難率の記録
             Utils.SaveResultCSV(
                 new string[] { "Time", "EvacuationRate" }, 
                 evaRatePerSec, 
@@ -177,6 +220,8 @@ public class ShelterManagementAgent : Agent {
         headers[0] = "Episode";
         headers[1] = "Step";
         Array.Copy(shelterIds, 0, headers, 2, shelterIds.Length);
+        // シミュレーション１回あたりのエージェントの行動ログを保存
+        // エピソード番号, ステップ数, <建物Aの避難所指定の有無 0 or 1>, <建物Bの避難所指定の有無 0 or 1>, ....
         Utils.SaveResultCSV(
             headers,
             ActionLogs,
@@ -223,6 +268,29 @@ public class ShelterManagementAgent : Agent {
 
 ```
 </details>
+この実装を行うと、下記のようにシミュレーションの結果がCSVで保存され、後にPythonによる実装で可視化・分析することができます。
+
+#### CSVデータの概要
+各CSVデータファイルは、unity実行日時を示したフォルダ`Assets/YYYY_MM_DD-HH_MM_SS/`の配下に生成されます。
+シミュレーションの実行を終了すると、以下の各ファイルを生成・保存します。
+
+- `ActionLog_Episode_<エピソード番号>` : エージェントの行動ログ記録
+    - エピソードごとにファイルが生成されます。各建物のIDと、その建物に対応する避難所指定の有無（0 or 1）が記録されています。
+```csv
+Episode,Step,bldg_A,bldg_B,bldg_C,bldg_D,bldg_E,bldg_F,bldg_G,bldg_H,bldg_I,bldg_J,bldg_K
+0,0,0,0,1,0,1,1,1,1,0,1,0
+```
+- `EvaRatesPerSec_Episode_<エピソード番号>` : そのエピソードにおける経過時間(秒)と避難率の記録
+    - エピソードごとにファイルが生成されます。経過時間とその時の避難率を記録します。
+```csv
+Time,EvacuationRate
+0.02,0
+0.04,0
+...
+1799.974,0.3
+1799.994,0.3
+1800.014,0.3
+```
 
 ### データ可視化用の処理の作成
 記録したCSVデータを各種グラフに可視化するためのPythonプログラムを実装していきます。
@@ -490,7 +558,10 @@ plt.ylabel('Capacity')
 plt.show()
 ```
 
-![alt text](image-7.png)
+![alt text](image-13.png)
+
+- オレンジ：モデルが選択した上位２つの建物
+- 青 : モデルが選択しなかった/選択回数下位の建物
 
 このグラフから、モデルが選択した上位２つの建物は、収容人数が大きい建物であることが分かります。
 一方、下位２つの建物は、収容人数が小さい建物であることが分かります。
