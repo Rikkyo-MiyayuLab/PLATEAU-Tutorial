@@ -493,10 +493,8 @@ public class EvacueeSpawnPoint : MonoBehaviour {
         }
     }
 
-
-
   ```
-  作成後、シーン内に設定した各避難所の建物オブジェクトにアタッチしてください。
+  このコンポーネントは、実行時に自動的に各避難所候補地へアタッチされます。
 </details>
 
 <details>
