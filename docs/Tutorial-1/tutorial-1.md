@@ -1200,7 +1200,7 @@ Actions
         Branch 0 Size : 2 （二値分類の為）
         ...(以下候補地数分)
 ```
-![alt text](image-15.png)
+![alt text](image-27.png)
 
 今回エピソード終了は、次の全体制御用プログラムで行っているため、`Max Steps`は`0`のままで設定してください。
 
@@ -1218,6 +1218,7 @@ Spawn Radius : 10 （避難者のスポーンエリアの半径）// エディ�
 Spawn Center : (0,0,0) （避難者のスポーンエリアの中心位置）
 Agent : ShelterManagementAgent （エージェントのオブジェクト）
 ```
+
 #### 6-2-1. 避難者生成モードについて
 
 ![alt text](image-23.png)
@@ -1237,9 +1238,9 @@ Evacuee Prefab : 避難者のプレハブ
 Spawn Radius : 10 （避難者の生成半径）
 Spawn Size : 50 （避難者の生成人数）
 ```
+今回はこのカスタムモードを使って、シミュレーションを実行していきます。
+![alt text](image-28.png)
 
-
-![alt text](image-16.png)
 
 ### 6-3. `Evacuee`の設定
 避難者の挙動を制御する`Evacuee`の設定を行います。Assets内から`Evacuee`オブジェクトを選択し、Inspectorから以下の項目を設定します。設定値は任意です。
